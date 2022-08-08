@@ -93,8 +93,8 @@ func Request(method, endpoint string, reqBody, resp interface{}, query map[strin
 		return err
 	}
 
-	if rsp.StatusCode != http.StatusOK {
-		return fmt.Errorf(string(rspBody))
+	if rsp.StatusCode != http.StatusOK && rsp.StatusCode != http.StatusAccepted {
+		return fmt.Errorf("response(%d): %s", rsp.StatusCode, string(rspBody))
 	}
 
 	err = json.Unmarshal(rspBody, resp)

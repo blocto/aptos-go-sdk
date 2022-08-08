@@ -6,12 +6,16 @@ import (
 	"math/big"
 	"strings"
 
+	"golang.org/x/crypto/ed25519"
+
 	"aptos-go-sdk/client"
 )
 
 type Transaction struct {
 	err error
 
+	// signing message for verification
+	signingMessage string
 	client.Transaction
 }
 
@@ -29,12 +33,12 @@ func (t *Transaction) SetSender(sender string) *Transaction {
 	}
 
 	length := len(senderBytes)
-	if length != 16 && length != 32 {
+	if length != 32 {
 		t.err = fmt.Errorf("unexpected sender length: %d", length)
 		return t
 	}
 
-	t.Sender = "0x" + hex.EncodeToString(senderBytes[:16])
+	t.Sender = "0x" + hex.EncodeToString(senderBytes)
 	return t
 }
 
@@ -175,6 +179,309 @@ func (t *Transaction) SetPayload(payloadType string, typeArgs []string, args []i
 	return t
 }
 
+func (t *Transaction) SetSignature(sigType string, signature interface{}) *Transaction {
+	if t.hasError() {
+		return t
+	}
+
+	t.Signature = &struct {
+		Type string `json:"type"`
+		client.MultiED25519Signature
+		client.ED25519Signature
+		client.MultiAgentSignature
+	}{}
+
+	switch sigType {
+	case "ed25519_signature", "multi_ed25519_signature", "multi_agent_signature":
+		t.Signature.Type = sigType
+	default:
+		t.err = fmt.Errorf("unexpected sig type %s", sigType)
+		return t
+	}
+
+	switch signature.(type) {
+	case client.ED25519Signature:
+		t.Signature.ED25519Signature = signature.(client.ED25519Signature)
+		if err := t.validateED25519(t.Signature.ED25519Signature); err != nil {
+			t.err = err
+			return t
+		}
+	case client.MultiED25519Signature:
+		t.Signature.MultiED25519Signature = signature.(client.MultiED25519Signature)
+		if err := t.validateMultiED25519(t.Signature.MultiED25519Signature); err != nil {
+			t.err = err
+			return t
+		}
+	case client.MultiAgentSignature:
+		t.Signature.MultiAgentSignature = signature.(client.MultiAgentSignature)
+		if err := t.validateMultiAgent(t.Signature.MultiAgentSignature); err != nil {
+			t.err = err
+			return t
+		}
+	default:
+		t.err = fmt.Errorf("unexpected signature type %T", signature)
+		return t
+	}
+
+	return t
+}
+
+func (t Transaction) TxForSimulate() client.Transaction {
+	tx := t.Transaction
+	zeroSig := "0x" + strings.Repeat("00", 64)
+	tx.Signature = &struct {
+		Type string `json:"type"`
+		client.MultiED25519Signature
+		client.ED25519Signature
+		client.MultiAgentSignature
+	}{
+		Type:                  tx.Signature.Type,
+		ED25519Signature:      tx.Signature.ED25519Signature,
+		MultiED25519Signature: tx.Signature.MultiED25519Signature,
+		MultiAgentSignature:   tx.Signature.MultiAgentSignature,
+	}
+
+	if tx.Signature != nil {
+		if len(tx.Signature.Signature) > 0 {
+			tx.Signature.Signature = zeroSig
+		}
+
+		newSignatures := make([]string, len(tx.Signature.Signatures))
+		for i, sig := range tx.Signature.Signatures {
+			if len(sig) > 0 {
+				newSignatures[i] = zeroSig
+			}
+		}
+		tx.Signature.Signatures = newSignatures
+
+		if len(tx.Signature.Sender.Signature) > 0 {
+			tx.Signature.Sender.Signature = zeroSig
+		}
+
+		newSecondarySigners := make([]struct {
+			Type string `json:"type"`
+			client.ED25519Signature
+			client.MultiED25519Signature
+		}, len(tx.Signature.SecondarySigners))
+		for i, signer := range tx.Signature.SecondarySigners {
+			if len(signer.Signature) > 0 {
+				newSecondarySigners[i].Signature = zeroSig
+			}
+
+			newSignatures := make([]string, len(signer.Signatures))
+			for ii, sig := range signer.Signatures {
+				if len(sig) > 0 {
+					newSignatures[ii] = zeroSig
+				}
+			}
+			newSecondarySigners[i].Signatures = newSignatures
+		}
+		tx.Signature.SecondarySigners = newSecondarySigners
+	}
+
+	return tx
+}
+
+func (t Transaction) validatePub(pub string) error {
+	pub = strings.TrimPrefix(pub, "0x")
+	pub = strings.TrimPrefix(pub, "0X")
+	pubBytes, err := hex.DecodeString(pub)
+	if err != nil {
+		return err
+	}
+
+	if len(pubBytes) != 32 {
+		return fmt.Errorf("incorrect pub length %d", len(pubBytes))
+	}
+
+	return nil
+}
+
+func (t Transaction) validateSig(sig string) error {
+	sig = strings.TrimPrefix(sig, "0x")
+	sig = strings.TrimPrefix(sig, "0X")
+	sigBytes, err := hex.DecodeString(sig)
+	if err != nil {
+		return err
+	}
+
+	if len(sigBytes) != 64 {
+		return fmt.Errorf("incorrect sig length %d", len(sigBytes))
+	}
+
+	return nil
+}
+
+func (t Transaction) validateBitmap(bitmap string) error {
+	bitmap = strings.TrimPrefix(bitmap, "0x")
+	bitmap = strings.TrimPrefix(bitmap, "0X")
+	bitmapBytes, err := hex.DecodeString(bitmap)
+	if err != nil {
+		return err
+	}
+
+	if len(bitmapBytes) != 4 {
+		return fmt.Errorf("incorrect bitmap length %d", len(bitmapBytes))
+	}
+
+	return nil
+}
+
+func (t Transaction) validateSigWithPub(sig, pub string) error {
+	pub = strings.TrimPrefix(pub, "0x")
+	pub = strings.TrimPrefix(pub, "0X")
+	pubBytes, err := hex.DecodeString(pub)
+	if err != nil {
+		return err
+	}
+
+	sig = strings.TrimPrefix(sig, "0x")
+	sig = strings.TrimPrefix(sig, "0X")
+	sigBytes, err := hex.DecodeString(sig)
+	if err != nil {
+		return err
+	}
+
+	sigMsg := strings.TrimPrefix(t.signingMessage, "0x")
+	sigMsg = strings.TrimPrefix(sigMsg, "0X")
+	sigMsgBytes, err := hex.DecodeString(sigMsg)
+	if err != nil {
+		return err
+	}
+
+	if !ed25519.Verify(pubBytes, sigMsgBytes, sigBytes) {
+		return fmt.Errorf("ed25519.Verify failed")
+	}
+
+	return nil
+}
+
+func (t Transaction) validateED25519(ed25519Sig client.ED25519Signature) error {
+	if err := t.validatePub(ed25519Sig.PublicKey); err != nil {
+		return err
+	}
+
+	if err := t.validateSig(ed25519Sig.Signature); err != nil {
+		return err
+	}
+
+	if err := t.validateSigWithPub(ed25519Sig.Signature, ed25519Sig.PublicKey); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (t Transaction) validateMultiED25519(multiED25519Sig client.MultiED25519Signature) error {
+	if len(multiED25519Sig.Signatures) < multiED25519Sig.Threshold {
+		return fmt.Errorf("signatures size(%d) must >= threshold(%d)",
+			len(multiED25519Sig.Signatures), multiED25519Sig.Threshold)
+	}
+
+	for _, sig := range multiED25519Sig.Signatures {
+		if err := t.validateSig(sig); err != nil {
+			return err
+		}
+	}
+
+	for _, pub := range multiED25519Sig.PublicKeys {
+		if err := t.validatePub(pub); err != nil {
+			return err
+		}
+	}
+
+	if err := t.validateBitmap(multiED25519Sig.Bitmap); err != nil {
+		return err
+	}
+
+	bitmapBytes, err := hex.DecodeString(multiED25519Sig.Bitmap)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(bitmapBytes)
+
+	var sigIndex int
+	bitmapBigInt := new(big.Int).SetBytes(bitmapBytes)
+	for i := 0; i < 32; i++ {
+		if bitmapBigInt.Bit(31-i) == 1 {
+			if i > len(multiED25519Sig.PublicKeys)-1 {
+				return fmt.Errorf("bitmap %b and public keys length %d not match",
+					bitmapBytes, len(multiED25519Sig.PublicKeys))
+			}
+			if err := t.validateSigWithPub(
+				multiED25519Sig.Signatures[sigIndex], multiED25519Sig.PublicKeys[i]); err != nil {
+				return err
+			}
+			sigIndex++
+		}
+	}
+
+	if sigIndex != len(multiED25519Sig.Signatures) {
+		return fmt.Errorf("does not have enough signatures: %d vs %d",
+			sigIndex, len(multiED25519Sig.Signatures))
+	}
+	return nil
+}
+
+func (t Transaction) validateMultiAgent(multiAgentSig client.MultiAgentSignature) error {
+	switch multiAgentSig.Sender.Type {
+	case "ed25519_signature":
+		if err := t.validateED25519(multiAgentSig.Sender.ED25519Signature); err != nil {
+			return err
+		}
+	case "multi_ed25519_signature":
+		if err := t.validateMultiED25519(multiAgentSig.Sender.MultiED25519Signature); err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("unexpected sig type %s", multiAgentSig.Sender.Type)
+	}
+
+	if len(multiAgentSig.SecondarySigners) != len(multiAgentSig.SecondarySigners) {
+		return fmt.Errorf("incorrect agent signatures size: %d vs %d",
+			len(multiAgentSig.SecondarySigners), len(multiAgentSig.SecondarySigners))
+	}
+
+	for _, sig := range multiAgentSig.SecondarySigners {
+		switch sig.Type {
+		case "ed25519_signature":
+			if err := t.validateED25519(sig.ED25519Signature); err != nil {
+				return err
+			}
+		case "multi_ed25519_signature":
+			if err := t.validateMultiED25519(sig.MultiED25519Signature); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("unexpected sig type %s", sig.Type)
+		}
+	}
+
+	return nil
+}
+
+func (t *Transaction) SetSigningMessage(signingMessage string) *Transaction {
+	if t.hasError() {
+		return t
+	}
+
+	signingMessage = strings.TrimPrefix(signingMessage, "0x")
+	signingMessage = strings.TrimPrefix(signingMessage, "0X")
+	_, err := hex.DecodeString(signingMessage)
+	if err != nil {
+		t.err = err
+		return t
+	}
+
+	t.signingMessage = signingMessage
+	return t
+}
+
 func (t *Transaction) hasError() bool {
 	return t.err != nil
+}
+
+func (t Transaction) Error() error {
+	return t.err
 }

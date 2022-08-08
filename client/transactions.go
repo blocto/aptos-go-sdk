@@ -31,8 +31,12 @@ type MultiED25519Signature struct {
 }
 
 type MultiAgentSignature struct {
-	Sender                   ED25519Signature `json:"sender"`
-	SecondarySignerAddresses []string         `json:"secondary_signer_addresses"`
+	Sender struct {
+		Type string `json:"type"`
+		ED25519Signature
+		MultiED25519Signature
+	} `json:"sender"`
+	SecondarySignerAddresses []string `json:"secondary_signer_addresses"`
 	SecondarySigners         []struct {
 		Type string `json:"type"`
 		ED25519Signature
@@ -100,12 +104,12 @@ type UserTransaction struct {
 	GasUnitPrice            string `json:"gas_unit_price"`
 	GasCurrencyCode         string `json:"gas_currency_code"`
 	ExpirationTimestampSecs string `json:"expiration_timestamp_secs"`
-	Signature               struct {
+	Signature               *struct {
 		Type string `json:"type"`
 		MultiED25519Signature
 		ED25519Signature
 		MultiAgentSignature
-	} `json:"signature"`
+	} `json:"signature,omitempty"`
 }
 
 type BlockMetadataTransaction struct {
