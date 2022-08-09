@@ -8,7 +8,7 @@ import (
 
 	"golang.org/x/crypto/ed25519"
 
-	"aptos-go-sdk/client"
+	"github.com/portto/aptos-go-sdk/client"
 )
 
 type Transaction struct {

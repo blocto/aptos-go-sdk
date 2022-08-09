@@ -1,4 +1,4 @@
-module aptos-go-sdk
+module github.com/portto/aptos-go-sdk
 
 go 1.18
 
