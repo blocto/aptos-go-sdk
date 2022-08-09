@@ -110,6 +110,7 @@ type UserTransaction struct {
 		ED25519Signature
 		MultiAgentSignature
 	} `json:"signature,omitempty"`
+	SecondarySigners []string `json:"secondary_signers"`
 }
 
 type BlockMetadataTransaction struct {

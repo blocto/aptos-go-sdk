@@ -226,6 +226,15 @@ func (t *Transaction) SetSignature(sigType string, signature interface{}) *Trans
 	return t
 }
 
+func (t *Transaction) SetSecondarySigners(secondarySigners []string) *Transaction {
+	if t.hasError() {
+		return t
+	}
+
+	t.SecondarySigners = secondarySigners
+	return t
+}
+
 func (t Transaction) TxForSimulate() client.Transaction {
 	tx := t.Transaction
 	zeroSig := "0x" + strings.Repeat("00", 64)
@@ -258,12 +267,23 @@ func (t Transaction) TxForSimulate() client.Transaction {
 			tx.Signature.Sender.Signature = zeroSig
 		}
 
+		newSignatures = make([]string, len(tx.Signature.Sender.Signatures))
+		for i, sig := range tx.Signature.Sender.Signatures {
+			if len(sig) > 0 {
+				newSignatures[i] = zeroSig
+			}
+		}
+		tx.Signature.Sender.Signatures = newSignatures
+
 		newSecondarySigners := make([]struct {
 			Type string `json:"type"`
 			client.ED25519Signature
 			client.MultiED25519Signature
 		}, len(tx.Signature.SecondarySigners))
 		for i, signer := range tx.Signature.SecondarySigners {
+			newSecondarySigners[i].Type = signer.Type
+			newSecondarySigners[i].PublicKey = signer.PublicKey
+			newSecondarySigners[i].PublicKeys = signer.PublicKeys
 			if len(signer.Signature) > 0 {
 				newSecondarySigners[i].Signature = zeroSig
 			}
@@ -398,8 +418,6 @@ func (t Transaction) validateMultiED25519(multiED25519Sig client.MultiED25519Sig
 	if err != nil {
 		return err
 	}
-
-	fmt.Println(bitmapBytes)
 
 	var sigIndex int
 	bitmapBigInt := new(big.Int).SetBytes(bitmapBytes)
