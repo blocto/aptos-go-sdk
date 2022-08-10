@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"encoding/hex"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/portto/aptos-go-sdk/client"
@@ -24,8 +25,16 @@ func init() {
 
 func main() {
 	replaceAuthKey()
+	fmt.Println("=====")
 	transferTxMultiED25519()
+	fmt.Println("=====")
 	invokeMultiAgent()
+	fmt.Println("=====")
+	time.Sleep(5 * time.Second)
+	invokeScriptPayload()
+	fmt.Println("=====")
+	invokeMultiAgentScriptPayload()
+	fmt.Println("=====")
 }
 
 func replaceAuthKey() {
@@ -429,4 +438,191 @@ func invokeMultiAgent() {
 	}
 
 	fmt.Println("multiAgent tx hash:", rawTx.Hash)
+}
+
+func invokeScriptPayload() {
+	fileBytes, err := os.ReadFile("./examples/transactions/scripts/set_message.mv")
+	if err != nil {
+		panic(err)
+	}
+
+	authKey, seeds := createAccountTx(1)
+	key, err := hex.DecodeString(seeds[0])
+	if err != nil {
+		panic(err)
+	}
+
+	priv := ed25519.NewKeyFromSeed(key)
+	address := hex.EncodeToString(authKey[:])
+	time.Sleep(5 * time.Second)
+	faucet(address, "50")
+	time.Sleep(5 * time.Second)
+
+	accountInfo, err := api.GetAccount(address)
+	if err != nil {
+		panic(err)
+	}
+
+	tx := transactions.Transaction{}
+	err = tx.SetSender(address).
+		SetPayload("script_payload",
+			[]string{},
+			[]interface{}{
+				hex.EncodeToString([]byte("hi script payload~")),
+			}, client.ScriptPayload{
+				Code: client.Code{
+					Bytecode: hex.EncodeToString(fileBytes),
+				},
+			}).
+		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
+		SetGasUnitPrice(uint64(1)).
+		SetMaxGasAmount(uint64(50)).
+		SetSequenceNumber(accountInfo.SequenceNumber).Error()
+	if err != nil {
+		panic(err)
+	}
+
+	signingMsg, err := api.CreateTransactionSigningMessage(tx.Transaction)
+	if err != nil {
+		panic(err)
+	}
+
+	err = tx.SetSigningMessage(signingMsg.Message).Error()
+	if err != nil {
+		panic(err)
+	}
+
+	msgBytes, err := hex.DecodeString(signingMsg.Message[2:])
+	if err != nil {
+		panic(err)
+	}
+
+	signature := ed25519.Sign(priv, msgBytes)
+	err = tx.SetSignature("ed25519_signature", client.ED25519Signature{
+		PublicKey: hex.EncodeToString(priv.Public().(ed25519.PublicKey)[:]),
+		Signature: hex.EncodeToString(signature),
+	}).Error()
+	if err != nil {
+		panic(err)
+	}
+
+	txForSimulate := tx.TxForSimulate()
+	_, err = api.SimulateTransaction(txForSimulate)
+	if err != nil {
+		panic(err)
+	}
+
+	rawTx, err := api.SubmitTransaction(tx.Transaction)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("test script payload tx hash:", rawTx.Hash)
+}
+
+func invokeMultiAgentScriptPayload() {
+	fileBytes, err := os.ReadFile("./examples/transactions/scripts/multi_agent_set_message.mv")
+	if err != nil {
+		panic(err)
+	}
+
+	authKey, seeds := createAccountTx(2)
+	time.Sleep(5 * time.Second)
+	sender := faucetAdminAddress
+	senderInfo, err := api.GetAccount(sender)
+	if err != nil {
+		panic(err)
+	}
+
+	tx := transactions.Transaction{}
+	err = tx.SetSender(sender).
+		SetPayload("script_payload",
+			[]string{},
+			[]interface{}{
+				hex.EncodeToString([]byte("hi ~ multi agent script payload")),
+			}, client.ScriptPayload{
+				Code: client.Code{
+					Bytecode: hex.EncodeToString(fileBytes),
+				},
+			}).
+		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
+		SetGasUnitPrice(uint64(1)).
+		SetMaxGasAmount(uint64(100)).
+		SetSequenceNumber(senderInfo.SequenceNumber).
+		SetSecondarySigners([]string{
+			hex.EncodeToString(authKey[:]),
+		}).Error()
+	if err != nil {
+		panic(err)
+	}
+
+	signingMsg, err := api.CreateTransactionSigningMessage(tx.Transaction)
+	if err != nil {
+		panic(err)
+	}
+
+	err = tx.SetSigningMessage(signingMsg.Message).Error()
+	if err != nil {
+		panic(err)
+	}
+
+	msgBytes, err := hex.DecodeString(signingMsg.Message[2:])
+	if err != nil {
+		panic(err)
+	}
+
+	key1, _ := hex.DecodeString(seeds[0])
+	key2, _ := hex.DecodeString(seeds[1])
+	priv1 := ed25519.NewKeyFromSeed(key1)
+	priv2 := ed25519.NewKeyFromSeed(key2)
+	signature := ed25519.Sign(priv2, msgBytes)
+	senderPriv := ed25519.NewKeyFromSeed(faucetAdminSeed)
+	senderSignature := ed25519.Sign(senderPriv, msgBytes)
+	err = tx.SetSignature("multi_agent_signature", client.MultiAgentSignature{
+		Sender: struct {
+			Type string `json:"type"`
+			client.ED25519Signature
+			client.MultiED25519Signature
+		}{
+			Type: "ed25519_signature",
+			ED25519Signature: client.ED25519Signature{
+				PublicKey: hex.EncodeToString(senderPriv.Public().(ed25519.PublicKey)),
+				Signature: hex.EncodeToString(senderSignature),
+			},
+		},
+		SecondarySignerAddresses: []string{
+			hex.EncodeToString(authKey[:]),
+		},
+		SecondarySigners: []struct {
+			Type string `json:"type"`
+			client.ED25519Signature
+			client.MultiED25519Signature
+		}{
+			{
+				Type: "multi_ed25519_signature",
+				MultiED25519Signature: client.MultiED25519Signature{
+					PublicKeys: []string{hex.EncodeToString(priv1.Public().(ed25519.PublicKey)), hex.EncodeToString(priv2.Public().(ed25519.PublicKey))},
+					Signatures: []string{hex.EncodeToString(signature)},
+					Threshold:  1,
+					Bitmap:     "40000000",
+				},
+			},
+		},
+	}).Error()
+	if err != nil {
+		panic(err)
+	}
+
+	txForSimulate := tx.TxForSimulate()
+	_, err = api.SimulateTransaction(txForSimulate)
+	if err != nil {
+		panic(err)
+	}
+
+	rawTx, err := api.SubmitTransaction(tx.Transaction)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("test multiAgent script payload tx hash:", rawTx.Hash)
 }
