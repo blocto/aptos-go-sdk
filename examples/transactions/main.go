@@ -33,7 +33,22 @@ func main() {
 	time.Sleep(5 * time.Second)
 	invokeScriptPayload()
 	fmt.Println("=====")
-	invokeMultiAgentScriptPayload()
+	invokeMultiAgentScriptPayload("multi_agent_set_message", []string{}, []interface{}{
+		hex.EncodeToString([]byte("hi~ aptos")),
+	})
+	fmt.Println("=====")
+	time.Sleep(5 * time.Second)
+	invokeMultiAgentScriptPayload("multi_agent_rotate_authentication_key", []string{}, []interface{}{
+		hex.EncodeToString(make([]byte, 32)),
+	})
+	fmt.Println("=====")
+	time.Sleep(5 * time.Second)
+	invokeMultiAgentScriptPayload("multi_agent_transfer", []string{
+		"0x1::aptos_coin::AptosCoin",
+	}, []interface{}{
+		faucetAdminAddress,
+		"1",
+	}, "1")
 	fmt.Println("=====")
 }
 
@@ -520,14 +535,20 @@ func invokeScriptPayload() {
 	fmt.Println("test script payload tx hash:", rawTx.Hash)
 }
 
-func invokeMultiAgentScriptPayload() {
-	fileBytes, err := os.ReadFile("./examples/transactions/scripts/multi_agent_set_message.mv")
+func invokeMultiAgentScriptPayload(scriptName string, typeArgs []string, args []interface{}, faucetAmount ...string) {
+	fileBytes, err := os.ReadFile(fmt.Sprintf("./examples/transactions/scripts/%s.mv", scriptName))
 	if err != nil {
 		panic(err)
 	}
 
 	authKey, seeds := createAccountTx(2)
 	time.Sleep(5 * time.Second)
+
+	if len(faucetAmount) > 0 {
+		faucet(hex.EncodeToString(authKey[:]), faucetAmount[0])
+		time.Sleep(5 * time.Second)
+	}
+
 	sender := faucetAdminAddress
 	senderInfo, err := api.GetAccount(sender)
 	if err != nil {
@@ -537,10 +558,9 @@ func invokeMultiAgentScriptPayload() {
 	tx := transactions.Transaction{}
 	err = tx.SetSender(sender).
 		SetPayload("script_payload",
-			[]string{},
-			[]interface{}{
-				hex.EncodeToString([]byte("hi ~ multi agent script payload")),
-			}, client.ScriptPayload{
+			typeArgs,
+			args,
+			client.ScriptPayload{
 				Code: client.Code{
 					Bytecode: hex.EncodeToString(fileBytes),
 				},
