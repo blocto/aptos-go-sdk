@@ -284,6 +284,8 @@ func (t Transaction) TxForSimulate() client.Transaction {
 			newSecondarySigners[i].Type = signer.Type
 			newSecondarySigners[i].PublicKey = signer.PublicKey
 			newSecondarySigners[i].PublicKeys = signer.PublicKeys
+			newSecondarySigners[i].Threshold = signer.Threshold
+			newSecondarySigners[i].Bitmap = signer.Bitmap
 			if len(signer.Signature) > 0 {
 				newSecondarySigners[i].Signature = zeroSig
 			}
