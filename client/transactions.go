@@ -6,12 +6,13 @@ import (
 )
 
 type Transactions interface {
-	GetTransactions(start, limit int) ([]Transaction, error)
-	SubmitTransaction(tx Transaction) (*Transaction, error)
-	SimulateTransaction(tx Transaction) ([]Transaction, error)
-	GetAccountTransactions(address string, start, limit int) ([]Transaction, error)
-	GetTransaction(txHash string) (*Transaction, error)
-	CreateTransactionSigningMessage(tx Transaction) (*SigningMessage, error)
+	GetTransactions(start, limit int, opts ...interface{}) ([]Transaction, error)
+	SubmitTransaction(tx Transaction, opts ...interface{}) (*Transaction, error)
+	SimulateTransaction(tx Transaction, opts ...interface{}) ([]Transaction, error)
+	GetAccountTransactions(address string, start, limit int, opts ...interface{}) ([]Transaction, error)
+	GetTransaction(txHash string, opts ...interface{}) (*Transaction, error)
+	GetTransactionByVersion(version uint64, opts ...interface{}) (*Transaction, error)
+	EncodeSubmission(tx Transaction, opts ...interface{}) (*SigningMessage, error)
 }
 
 type TransactionsImpl struct {
@@ -114,10 +115,10 @@ type UserTransaction struct {
 }
 
 type BlockMetadataTransaction struct {
-	ID                 string   `json:"id"`
-	Round              string   `json:"round"`
-	PreviousBlockVotes []string `json:"previous_block_votes"`
-	Proposer           string   `json:"proposer"`
+	ID                 string `json:"id"`
+	Round              string `json:"round"`
+	PreviousBlockVotes []bool `json:"previous_block_votes"`
+	Proposer           string `json:"proposer"`
 }
 
 type Transaction struct {
@@ -147,14 +148,14 @@ type Transaction struct {
 	Changes             []Change `json:"changes"`
 }
 
-func (impl TransactionsImpl) GetTransactions(start, limit int) ([]Transaction, error) {
+func (impl TransactionsImpl) GetTransactions(start, limit int, opts ...interface{}) ([]Transaction, error) {
 	var rspJSON []Transaction
 	err := Request(http.MethodGet,
 		impl.Base.Endpoint()+fmt.Sprintf("/transactions"),
 		nil, &rspJSON, map[string]interface{}{
 			"start": start,
 			"limit": limit,
-		})
+		}, requestOptions(opts...))
 	if err != nil {
 		return nil, err
 	}
@@ -162,11 +163,11 @@ func (impl TransactionsImpl) GetTransactions(start, limit int) ([]Transaction, e
 	return rspJSON, nil
 }
 
-func (impl TransactionsImpl) SubmitTransaction(tx Transaction) (*Transaction, error) {
+func (impl TransactionsImpl) SubmitTransaction(tx Transaction, opts ...interface{}) (*Transaction, error) {
 	var rspJSON Transaction
 	err := Request(http.MethodPost,
 		impl.Base.Endpoint()+"/transactions",
-		tx, &rspJSON, nil)
+		tx, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
 		return nil, err
 	}
@@ -174,11 +175,11 @@ func (impl TransactionsImpl) SubmitTransaction(tx Transaction) (*Transaction, er
 	return &rspJSON, nil
 }
 
-func (impl TransactionsImpl) SimulateTransaction(tx Transaction) ([]Transaction, error) {
+func (impl TransactionsImpl) SimulateTransaction(tx Transaction, opts ...interface{}) ([]Transaction, error) {
 	var rspJSON []Transaction
 	err := Request(http.MethodPost,
 		impl.Base.Endpoint()+"/transactions/simulate",
-		tx, &rspJSON, nil)
+		tx, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
 		return nil, err
 	}
@@ -186,14 +187,14 @@ func (impl TransactionsImpl) SimulateTransaction(tx Transaction) ([]Transaction,
 	return rspJSON, nil
 }
 
-func (impl TransactionsImpl) GetAccountTransactions(address string, start, limit int) ([]Transaction, error) {
+func (impl TransactionsImpl) GetAccountTransactions(address string, start, limit int, opts ...interface{}) ([]Transaction, error) {
 	var rspJSON []Transaction
 	err := Request(http.MethodGet,
 		impl.Base.Endpoint()+fmt.Sprintf("/accounts/%s/transactions", address),
 		nil, &rspJSON, map[string]interface{}{
 			"start": start,
 			"limit": limit,
-		})
+		}, requestOptions(opts...))
 	if err != nil {
 		return nil, err
 	}
@@ -201,11 +202,23 @@ func (impl TransactionsImpl) GetAccountTransactions(address string, start, limit
 	return rspJSON, nil
 }
 
-func (impl TransactionsImpl) GetTransaction(txHash string) (*Transaction, error) {
+func (impl TransactionsImpl) GetTransaction(txHash string, opts ...interface{}) (*Transaction, error) {
 	var rspJSON Transaction
 	err := Request(http.MethodGet,
 		impl.Base.Endpoint()+fmt.Sprintf("/transactions/%s", txHash),
-		nil, &rspJSON, nil)
+		nil, &rspJSON, nil, requestOptions(opts...))
+	if err != nil {
+		return nil, err
+	}
+
+	return &rspJSON, nil
+}
+
+func (impl TransactionsImpl) GetTransactionByVersion(version uint64, opts ...interface{}) (*Transaction, error) {
+	var rspJSON Transaction
+	err := Request(http.MethodGet,
+		impl.Base.Endpoint()+fmt.Sprintf("/transactions/by_version/%d", version),
+		nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
 		return nil, err
 	}
@@ -217,11 +230,11 @@ type SigningMessage struct {
 	Message string `json:"message"`
 }
 
-func (impl TransactionsImpl) CreateTransactionSigningMessage(tx Transaction) (*SigningMessage, error) {
+func (impl TransactionsImpl) EncodeSubmission(tx Transaction, opts ...interface{}) (*SigningMessage, error) {
 	var rspJSON SigningMessage
 	err := Request(http.MethodPost,
-		impl.Base.Endpoint()+"/transactions/signing_message",
-		tx, &rspJSON, nil)
+		impl.Base.Endpoint()+"/transactions/encode_submission",
+		tx, &rspJSON.Message, nil, requestOptions(opts...))
 	if err != nil {
 		return nil, err
 	}

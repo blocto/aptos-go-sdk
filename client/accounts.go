@@ -6,11 +6,11 @@ import (
 )
 
 type Accounts interface {
-	GetAccount(address string) (*AccountInfo, error)
-	GetAccountResources(address string) ([]AccountResource, error)
-	GetResourceByAccountAddressAndResourceType(address, resourceType string) (*AccountResource, error)
-	GetAccountModules(address string) ([]AccountModule, error)
-	GetModuleByModuleID(address, moduleID string) (*AccountModule, error)
+	GetAccount(address string, opts ...interface{}) (*AccountInfo, error)
+	GetAccountResources(address string, opts ...interface{}) ([]AccountResource, error)
+	GetResourceByAccountAddressAndResourceType(address, resourceType string, opts ...interface{}) (*AccountResource, error)
+	GetAccountModules(address string, opts ...interface{}) ([]AccountModule, error)
+	GetModuleByModuleID(address, moduleID string, opts ...interface{}) (*AccountModule, error)
 }
 
 type AccountsImpl struct {
@@ -22,11 +22,11 @@ type AccountInfo struct {
 	AuthenticationKey string `json:"authentication_key"`
 }
 
-func (impl AccountsImpl) GetAccount(address string) (*AccountInfo, error) {
+func (impl AccountsImpl) GetAccount(address string, opts ...interface{}) (*AccountInfo, error) {
 	var rspJSON AccountInfo
 	err := Request(http.MethodGet,
 		impl.Base.Endpoint()+fmt.Sprintf("/accounts/%s", address),
-		nil, &rspJSON, nil)
+		nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
 		return nil, err
 	}
@@ -39,11 +39,11 @@ type AccountResource struct {
 	Data interface{}
 }
 
-func (impl AccountsImpl) GetAccountResources(address string) ([]AccountResource, error) {
+func (impl AccountsImpl) GetAccountResources(address string, opts ...interface{}) ([]AccountResource, error) {
 	var rspJSON []AccountResource
 	err := Request(http.MethodGet,
 		impl.Base.Endpoint()+fmt.Sprintf("/accounts/%s/resources", address),
-		nil, &rspJSON, nil)
+		nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
 		return nil, err
 	}
@@ -51,11 +51,11 @@ func (impl AccountsImpl) GetAccountResources(address string) ([]AccountResource,
 	return rspJSON, nil
 }
 
-func (impl AccountsImpl) GetResourceByAccountAddressAndResourceType(address, resourceType string) (*AccountResource, error) {
+func (impl AccountsImpl) GetResourceByAccountAddressAndResourceType(address, resourceType string, opts ...interface{}) (*AccountResource, error) {
 	var rspJSON AccountResource
 	err := Request(http.MethodGet,
 		impl.Base.Endpoint()+fmt.Sprintf("/accounts/%s/resource/%s", address, resourceType),
-		nil, &rspJSON, nil)
+		nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
 		return nil, err
 	}
@@ -68,11 +68,11 @@ type AccountModule struct {
 	ABI      interface{} `json:"abi"`
 }
 
-func (impl AccountsImpl) GetAccountModules(address string) ([]AccountModule, error) {
+func (impl AccountsImpl) GetAccountModules(address string, opts ...interface{}) ([]AccountModule, error) {
 	var rspJSON []AccountModule
 	err := Request(http.MethodGet,
 		impl.Base.Endpoint()+fmt.Sprintf("/accounts/%s/modules", address),
-		nil, &rspJSON, nil)
+		nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
 		return nil, err
 	}
@@ -80,11 +80,11 @@ func (impl AccountsImpl) GetAccountModules(address string) ([]AccountModule, err
 	return rspJSON, nil
 }
 
-func (impl AccountsImpl) GetModuleByModuleID(address, moduleID string) (*AccountModule, error) {
+func (impl AccountsImpl) GetModuleByModuleID(address, moduleID string, opts ...interface{}) (*AccountModule, error) {
 	var rspJSON AccountModule
 	err := Request(http.MethodGet,
 		impl.Base.Endpoint()+fmt.Sprintf("/accounts/%s/module/%s", address, moduleID),
-		nil, &rspJSON, nil)
+		nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
 		return nil, err
 	}

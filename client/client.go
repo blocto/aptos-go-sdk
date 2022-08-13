@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/big"
 	"net/http"
 	"time"
 )
@@ -24,6 +25,7 @@ func New(endpoint string) API {
 	}
 
 	impl.GeneralImp.Base = impl.APIBase
+	impl.BlocksImpl.Base = impl.APIBase
 	impl.AccountsImpl.Base = impl.APIBase
 	impl.StateImpl.Base = impl.APIBase
 	impl.EventsImpl.Base = impl.APIBase
@@ -35,6 +37,7 @@ type APIImpl struct {
 	APIBase
 
 	GeneralImp
+	BlocksImpl
 	TransactionsImpl
 	AccountsImpl
 	EventsImpl
@@ -55,13 +58,25 @@ type Base interface {
 
 type API interface {
 	General
+	Blocks
 	Transactions
 	Accounts
 	Events
 	State
 }
 
-func Request(method, endpoint string, reqBody, resp interface{}, query map[string]interface{}) error {
+type ResponseHeader struct {
+	AptosBlockHeight         uint64
+	AptosChainID             uint16
+	AptosEpoch               uint64
+	AptosLedgerOldestVersion uint64
+	AptosLedgerTimestampusec uint64
+	AptosLedgerVersion       uint64
+	AptosOldestBlockHeight   uint64
+}
+
+func Request(method, endpoint string, reqBody, resp interface{},
+	query map[string]interface{}, respHeader *ResponseHeader) error {
 	reqBytes, err := json.Marshal(reqBody)
 	if err != nil {
 		return err
@@ -73,11 +88,11 @@ func Request(method, endpoint string, reqBody, resp interface{}, query map[strin
 	}
 
 	if req.URL != nil && query != nil {
-		query := req.URL.Query()
+		q := req.URL.Query()
 		for k, v := range query {
-			query.Add(k, fmt.Sprintf("%v", v))
+			q.Add(k, fmt.Sprintf("%v", v))
 		}
-		req.URL.RawQuery = query.Encode()
+		req.URL.RawQuery = q.Encode()
 	}
 
 	req.Header.Add("Content-Type", "application/json")
@@ -102,5 +117,51 @@ func Request(method, endpoint string, reqBody, resp interface{}, query map[strin
 		return err
 	}
 
+	if respHeader != nil {
+		if len(rsp.Header["X-Aptos-Block-Height"]) > 0 {
+			v, _ := new(big.Int).SetString(rsp.Header["X-Aptos-Block-Height"][0], 10)
+			respHeader.AptosBlockHeight = v.Uint64()
+		}
+
+		if len(rsp.Header["X-Aptos-Chain-Id"]) > 0 {
+			v, _ := new(big.Int).SetString(rsp.Header["X-Aptos-Chain-Id"][0], 10)
+			respHeader.AptosChainID = uint16(v.Uint64())
+		}
+
+		if len(rsp.Header["X-Aptos-Epoch"]) > 0 {
+			v, _ := new(big.Int).SetString(rsp.Header["X-Aptos-Epoch"][0], 10)
+			respHeader.AptosEpoch = v.Uint64()
+		}
+
+		if len(rsp.Header["X-Aptos-Ledger-Oldest-Version"]) > 0 {
+			v, _ := new(big.Int).SetString(rsp.Header["X-Aptos-Ledger-Oldest-Version"][0], 10)
+			respHeader.AptosLedgerOldestVersion = v.Uint64()
+		}
+
+		if len(rsp.Header["X-Aptos-Ledger-Timestampusec"]) > 0 {
+			v, _ := new(big.Int).SetString(rsp.Header["X-Aptos-Ledger-Timestampusec"][0], 10)
+			respHeader.AptosLedgerTimestampusec = v.Uint64()
+		}
+
+		if len(rsp.Header["X-Aptos-Ledger-Version"]) > 0 {
+			v, _ := new(big.Int).SetString(rsp.Header["X-Aptos-Ledger-Version"][0], 10)
+			respHeader.AptosLedgerVersion = v.Uint64()
+		}
+
+		if len(rsp.Header["X-Aptos-Oldest-Block-Height"]) > 0 {
+			v, _ := new(big.Int).SetString(rsp.Header["X-Aptos-Oldest-Block-Height"][0], 10)
+			respHeader.AptosOldestBlockHeight = v.Uint64()
+		}
+	}
 	return nil
+}
+
+func requestOptions(opts ...interface{}) (rspHeader *ResponseHeader) {
+	for _, opt := range opts {
+		switch opt.(type) {
+		case *ResponseHeader:
+			rspHeader = opt.(*ResponseHeader)
+		}
+	}
+	return
 }

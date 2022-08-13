@@ -6,8 +6,8 @@ import (
 )
 
 type Events interface {
-	GetEventsByEventKey(key string) ([]Event, error)
-	GetEventsByEventHandle(address, handleStruct, fieldName string, start, limit int) ([]Event, error)
+	GetEventsByEventKey(key string, opts ...interface{}) ([]Event, error)
+	GetEventsByEventHandle(address, handleStruct, fieldName string, start, limit int, opts ...interface{}) ([]Event, error)
 }
 
 type EventsImpl struct {
@@ -21,11 +21,11 @@ type Event struct {
 	Data           map[string]interface{} `json:"data"`
 }
 
-func (impl EventsImpl) GetEventsByEventKey(key string) ([]Event, error) {
+func (impl EventsImpl) GetEventsByEventKey(key string, opts ...interface{}) ([]Event, error) {
 	var rspJSON []Event
 	err := Request(http.MethodGet,
 		impl.Base.Endpoint()+fmt.Sprintf("/events/%s", key),
-		nil, &rspJSON, nil)
+		nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func (impl EventsImpl) GetEventsByEventKey(key string) ([]Event, error) {
 	return rspJSON, nil
 }
 
-func (impl EventsImpl) GetEventsByEventHandle(address, handleStruct, fieldName string, start, limit int) ([]Event, error) {
+func (impl EventsImpl) GetEventsByEventHandle(address, handleStruct, fieldName string, start, limit int, opts ...interface{}) ([]Event, error) {
 	var rspJSON []Event
 	err := Request(http.MethodGet,
 		impl.Base.Endpoint()+fmt.Sprintf("/accounts/%s/events/%s/%s",
@@ -41,7 +41,7 @@ func (impl EventsImpl) GetEventsByEventHandle(address, handleStruct, fieldName s
 		nil, &rspJSON, map[string]interface{}{
 			"start": start,
 			"limit": limit,
-		})
+		}, requestOptions(opts...))
 	if err != nil {
 		return nil, err
 	}

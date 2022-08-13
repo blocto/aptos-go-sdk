@@ -17,7 +17,7 @@ var faucetAdminSeed []byte
 var faucetAdminAddress string
 
 func init() {
-	api = client.New("https://fullnode.devnet.aptoslabs.com")
+	api = client.New("https://fullnode.devnet.aptoslabs.com/v1")
 	// please set up the account address & seed which has enough balance
 	faucetAdminSeed, _ = hex.DecodeString("784bc4d62c5e96b42addcbee3e5ccc0f7641fa82e9a3462d9a34d06e474274fe")
 	faucetAdminAddress = "86e4d830197448f975b748f69bd1b3b6d219a07635269a0b4e7f27966771e850"
@@ -97,7 +97,7 @@ func replaceAuthKey() {
 		panic(err)
 	}
 
-	signingMsg, err := api.CreateTransactionSigningMessage(tx.Transaction)
+	signingMsg, err := api.EncodeSubmission(tx.Transaction)
 	if err != nil {
 		panic(err)
 	}
@@ -165,7 +165,7 @@ func transferTxMultiED25519() {
 		panic(err)
 	}
 
-	signingMsg, err := api.CreateTransactionSigningMessage(tx.Transaction)
+	signingMsg, err := api.EncodeSubmission(tx.Transaction)
 	if err != nil {
 		panic(err)
 	}
@@ -257,7 +257,7 @@ func createAccountTx(keyNum int) (authKey [32]byte, seeds []string) {
 		panic(err)
 	}
 
-	signingMsg, err := api.CreateTransactionSigningMessage(tx.Transaction)
+	signingMsg, err := api.EncodeSubmission(tx.Transaction)
 	if err != nil {
 		panic(err)
 	}
@@ -321,7 +321,7 @@ func faucet(address string, amount string) {
 		panic(err)
 	}
 
-	signingMsg, err := api.CreateTransactionSigningMessage(tx.Transaction)
+	signingMsg, err := api.EncodeSubmission(tx.Transaction)
 	if err != nil {
 		panic(err)
 	}
@@ -388,7 +388,7 @@ func invokeMultiAgent() {
 		panic(err)
 	}
 
-	signingMsg, err := api.CreateTransactionSigningMessage(tx.Transaction)
+	signingMsg, err := api.EncodeSubmission(tx.Transaction)
 	if err != nil {
 		panic(err)
 	}
@@ -501,7 +501,7 @@ func invokeScriptPayload() {
 		panic(err)
 	}
 
-	signingMsg, err := api.CreateTransactionSigningMessage(tx.Transaction)
+	signingMsg, err := api.EncodeSubmission(tx.Transaction)
 	if err != nil {
 		panic(err)
 	}
@@ -580,7 +580,7 @@ func invokeMultiAgentScriptPayload(scriptName string, typeArgs []string, args []
 		panic(err)
 	}
 
-	signingMsg, err := api.CreateTransactionSigningMessage(tx.Transaction)
+	signingMsg, err := api.EncodeSubmission(tx.Transaction)
 	if err != nil {
 		panic(err)
 	}
