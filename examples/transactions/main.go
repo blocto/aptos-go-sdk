@@ -30,19 +30,19 @@ func main() {
 	fmt.Println("=====")
 	invokeMultiAgent()
 	fmt.Println("=====")
-	time.Sleep(5 * time.Second)
+	waitForTxConfirmed()
 	invokeScriptPayload()
 	fmt.Println("=====")
 	invokeMultiAgentScriptPayload("multi_agent_set_message", []string{}, []interface{}{
 		hex.EncodeToString([]byte("hi~ aptos")),
 	})
 	fmt.Println("=====")
-	time.Sleep(5 * time.Second)
+	waitForTxConfirmed()
 	invokeMultiAgentScriptPayload("multi_agent_rotate_authentication_key", []string{}, []interface{}{
 		hex.EncodeToString(make([]byte, 32)),
 	})
 	fmt.Println("=====")
-	time.Sleep(5 * time.Second)
+	waitForTxConfirmed()
 	invokeMultiAgentScriptPayload("multi_agent_transfer", []string{
 		"0x1::aptos_coin::AptosCoin",
 	}, []interface{}{
@@ -50,6 +50,10 @@ func main() {
 		"1",
 	}, "1")
 	fmt.Println("=====")
+}
+
+func waitForTxConfirmed() {
+	time.Sleep(15 * time.Second)
 }
 
 func replaceAuthKey() {
@@ -66,9 +70,9 @@ func replaceAuthKey() {
 		panic(err)
 	}
 
-	time.Sleep(5 * time.Second)
+	waitForTxConfirmed()
 	faucet(address, "50")
-	time.Sleep(5 * time.Second)
+	waitForTxConfirmed()
 
 	accountInfo, err := api.GetAccount(address)
 	if err != nil {
@@ -134,9 +138,9 @@ func replaceAuthKey() {
 func transferTxMultiED25519() {
 	authKey, seeds := createAccountTx(2)
 	address := hex.EncodeToString(authKey[:])
-	time.Sleep(5 * time.Second)
+	waitForTxConfirmed()
 	faucet(address, "100")
-	time.Sleep(5 * time.Second)
+	waitForTxConfirmed()
 
 	accountInfo, err := api.GetAccount(address)
 	if err != nil {
@@ -357,7 +361,7 @@ func faucet(address string, amount string) {
 
 func invokeMultiAgent() {
 	authKey, seeds := createAccountTx(2)
-	time.Sleep(5 * time.Second)
+	waitForTxConfirmed()
 	sender := faucetAdminAddress
 	senderInfo, err := api.GetAccount(sender)
 	if err != nil {
@@ -469,9 +473,9 @@ func invokeScriptPayload() {
 
 	priv := ed25519.NewKeyFromSeed(key)
 	address := hex.EncodeToString(authKey[:])
-	time.Sleep(5 * time.Second)
+	waitForTxConfirmed()
 	faucet(address, "50")
-	time.Sleep(5 * time.Second)
+	waitForTxConfirmed()
 
 	accountInfo, err := api.GetAccount(address)
 	if err != nil {
@@ -542,11 +546,11 @@ func invokeMultiAgentScriptPayload(scriptName string, typeArgs []string, args []
 	}
 
 	authKey, seeds := createAccountTx(2)
-	time.Sleep(5 * time.Second)
+	waitForTxConfirmed()
 
 	if len(faucetAmount) > 0 {
 		faucet(hex.EncodeToString(authKey[:]), faucetAmount[0])
-		time.Sleep(5 * time.Second)
+		waitForTxConfirmed()
 	}
 
 	sender := faucetAdminAddress
