@@ -15,7 +15,7 @@ type Transaction struct {
 	err error
 
 	// signing message for verification
-	signingMessage string
+	SigningMessage string `json:"signing_message"`
 	client.Transaction
 }
 
@@ -364,7 +364,7 @@ func (t Transaction) validateSigWithPub(sig, pub string) error {
 		return err
 	}
 
-	sigMsg := strings.TrimPrefix(t.signingMessage, "0x")
+	sigMsg := strings.TrimPrefix(t.SigningMessage, "0x")
 	sigMsg = strings.TrimPrefix(sigMsg, "0X")
 	sigMsgBytes, err := hex.DecodeString(sigMsg)
 	if err != nil {
@@ -494,7 +494,7 @@ func (t *Transaction) SetSigningMessage(signingMessage string) *Transaction {
 		return t
 	}
 
-	t.signingMessage = signingMessage
+	t.SigningMessage = signingMessage
 	return t
 }
 
