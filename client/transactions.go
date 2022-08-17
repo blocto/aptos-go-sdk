@@ -10,7 +10,7 @@ type Transactions interface {
 	SubmitTransaction(tx Transaction, opts ...interface{}) (*Transaction, error)
 	SimulateTransaction(tx Transaction, opts ...interface{}) ([]Transaction, error)
 	GetAccountTransactions(address string, start, limit int, opts ...interface{}) ([]Transaction, error)
-	GetTransaction(txHash string, opts ...interface{}) (*Transaction, error)
+	GetTransactionByHash(txHash string, opts ...interface{}) (*Transaction, error)
 	GetTransactionByVersion(version uint64, opts ...interface{}) (*Transaction, error)
 	EncodeSubmission(tx Transaction, opts ...interface{}) (*SigningMessage, error)
 }
@@ -202,10 +202,10 @@ func (impl TransactionsImpl) GetAccountTransactions(address string, start, limit
 	return rspJSON, nil
 }
 
-func (impl TransactionsImpl) GetTransaction(txHash string, opts ...interface{}) (*Transaction, error) {
+func (impl TransactionsImpl) GetTransactionByHash(txHash string, opts ...interface{}) (*Transaction, error) {
 	var rspJSON Transaction
 	err := Request(http.MethodGet,
-		impl.Base.Endpoint()+fmt.Sprintf("/transactions/%s", txHash),
+		impl.Base.Endpoint()+fmt.Sprintf("/transactions/by_hash/%s", txHash),
 		nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
 		return nil, err
