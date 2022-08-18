@@ -50,6 +50,8 @@ func main() {
 		"1",
 	}, "1")
 	fmt.Println("=====")
+	transferTxWeightedMultiED25519()
+	fmt.Println("=====")
 }
 
 func waitForTxConfirmed() {
@@ -649,4 +651,168 @@ func invokeMultiAgentScriptPayload(scriptName string, typeArgs []string, args []
 	}
 
 	fmt.Println("test multiAgent script payload tx hash:", rawTx.Hash)
+}
+
+func createWeightAccountTx() (authKey [32]byte, seeds []string) {
+	faucetAdminPriv := ed25519.NewKeyFromSeed(faucetAdminSeed)
+	var publicKeys [][]byte
+	key1Pub, key1Priv, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		panic(err)
+	}
+	seeds = append(seeds, hex.EncodeToString(key1Priv.Seed()))
+	publicKeys = append(publicKeys, key1Pub)
+
+	key2Pub, key2Priv, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		panic(err)
+	}
+	seeds = append(seeds, hex.EncodeToString(key2Priv.Seed()))
+	publicKeys = append(publicKeys, key2Pub)
+
+	key3Pub, key3Priv, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		panic(err)
+	}
+	seeds = append(seeds, hex.EncodeToString(key3Priv.Seed()))
+	publicKeys = append(publicKeys, key3Pub)
+	publicKeys = append(publicKeys, key3Pub)
+
+	authKey = crypto.MultiSignerAuthKey(2, publicKeys...)
+	accountInfo, err := api.GetAccount(faucetAdminAddress)
+	if err != nil {
+		panic(err)
+	}
+
+	tx := transactions.Transaction{}
+	err = tx.SetSender(faucetAdminAddress).
+		SetPayload("script_function_payload",
+			[]string{},
+			[]interface{}{
+				hex.EncodeToString(authKey[:]),
+			}, client.ScriptFunctionPayload{
+				Function: "0x1::account::create_account",
+			}).
+		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
+		SetGasUnitPrice(uint64(1)).
+		SetMaxGasAmount(uint64(1000)).
+		SetSequenceNumber(accountInfo.SequenceNumber).Error()
+	if err != nil {
+		panic(err)
+	}
+
+	signingMsg, err := api.EncodeSubmission(tx.Transaction)
+	if err != nil {
+		panic(err)
+	}
+
+	err = tx.SetSigningMessage(signingMsg.Message).Error()
+	if err != nil {
+		panic(err)
+	}
+
+	msgBytes, err := hex.DecodeString(signingMsg.Message[2:])
+	if err != nil {
+		panic(err)
+	}
+
+	signature := ed25519.Sign(faucetAdminPriv, msgBytes)
+	err = tx.SetSignature("ed25519_signature", client.ED25519Signature{
+		PublicKey: hex.EncodeToString(faucetAdminPriv.Public().(ed25519.PublicKey)),
+		Signature: hex.EncodeToString(signature),
+	}).Error()
+	if err != nil {
+		panic(err)
+	}
+
+	txForSimulate := tx.TxForSimulate()
+	_, err = api.SimulateTransaction(txForSimulate)
+	if err != nil {
+		panic(err)
+	}
+
+	rawTx, err := api.SubmitTransaction(tx.Transaction)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("create account tx hash:", rawTx.Hash)
+	return authKey, seeds
+}
+
+func transferTxWeightedMultiED25519() {
+	authKey, seeds := createWeightAccountTx()
+	address := hex.EncodeToString(authKey[:])
+	waitForTxConfirmed()
+	faucet(address, "100")
+	waitForTxConfirmed()
+
+	accountInfo, err := api.GetAccount(address)
+	if err != nil {
+		panic(err)
+	}
+
+	tx := transactions.Transaction{}
+	err = tx.SetSender(address).
+		SetPayload("script_function_payload",
+			[]string{"0x1::aptos_coin::AptosCoin"},
+			[]interface{}{
+				faucetAdminAddress,
+				"1",
+			}, client.ScriptFunctionPayload{
+				Function: "0x1::coin::transfer",
+			}).
+		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
+		SetGasUnitPrice(uint64(1)).
+		SetMaxGasAmount(uint64(100)).
+		SetSequenceNumber(accountInfo.SequenceNumber).Error()
+	if err != nil {
+		panic(err)
+	}
+
+	signingMsg, err := api.EncodeSubmission(tx.Transaction)
+	if err != nil {
+		panic(err)
+	}
+
+	err = tx.SetSigningMessage(signingMsg.Message).Error()
+	if err != nil {
+		panic(err)
+	}
+
+	msgBytes, err := hex.DecodeString(signingMsg.Message[2:])
+	if err != nil {
+		panic(err)
+	}
+
+	key1, _ := hex.DecodeString(seeds[0])
+	key2, _ := hex.DecodeString(seeds[1])
+	key3, _ := hex.DecodeString(seeds[2])
+	priv1 := ed25519.NewKeyFromSeed(key1)
+	priv2 := ed25519.NewKeyFromSeed(key2)
+	priv3 := ed25519.NewKeyFromSeed(key3)
+	signature := ed25519.Sign(priv3, msgBytes)
+	err = tx.SetSignature("multi_ed25519_signature", client.MultiED25519Signature{
+		PublicKeys: []string{hex.EncodeToString(priv1.Public().(ed25519.PublicKey)), hex.EncodeToString(priv2.Public().(ed25519.PublicKey)),
+			hex.EncodeToString(priv3.Public().(ed25519.PublicKey)), hex.EncodeToString(priv3.Public().(ed25519.PublicKey))},
+		Signatures: []string{hex.EncodeToString(signature), hex.EncodeToString(signature)},
+		Threshold:  2,
+		Bitmap:     "30000000",
+	}).Error()
+	if err != nil {
+		panic(err)
+	}
+
+	txForSimulate := tx.TxForSimulate()
+	_, err = api.SimulateTransaction(txForSimulate)
+	if err != nil {
+		panic(err)
+	}
+
+	rawTx, err := api.SubmitTransaction(tx.Transaction)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("transfer tx hash:", rawTx.Hash)
 }
