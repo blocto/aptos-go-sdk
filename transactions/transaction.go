@@ -152,7 +152,7 @@ func (t *Transaction) SetPayload(payloadType string, typeArgs []string, args []i
 	}
 
 	switch payloadType {
-	case "script_function_payload", "script_payload",
+	case "entry_function_payload", "script_payload",
 		"module_bundle_payload", "write_set_payload":
 		t.Payload.Type = payloadType
 		t.Payload.TypeArguments = typeArgs
