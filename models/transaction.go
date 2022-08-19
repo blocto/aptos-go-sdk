@@ -1,4 +1,4 @@
-package transactions
+package models
 
 import (
 	"encoding/hex"
@@ -6,17 +6,26 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/the729/lcs"
 	"golang.org/x/crypto/ed25519"
-
-	"github.com/portto/aptos-go-sdk/client"
+	"golang.org/x/crypto/sha3"
 )
 
 type Transaction struct {
 	err error
 
 	// signing message for verification
-	SigningMessage string `json:"signing_message"`
-	client.Transaction
+	signingMessage []byte
+	UserTransaction
+}
+
+func (t *Transaction) SetChainID(chainID uint8) *Transaction {
+	if t.hasError() {
+		return t
+	}
+
+	t.ChainID = chainID
+	return t
 }
 
 func (t *Transaction) SetSender(sender string) *Transaction {
@@ -24,21 +33,13 @@ func (t *Transaction) SetSender(sender string) *Transaction {
 		return t
 	}
 
-	sender = strings.TrimPrefix(sender, "0x")
-	sender = strings.TrimPrefix(sender, "0X")
-	senderBytes, err := hex.DecodeString(sender)
+	addr, err := HexToAccountAddress(sender)
 	if err != nil {
 		t.err = err
 		return t
 	}
 
-	length := len(senderBytes)
-	if length != 32 {
-		t.err = fmt.Errorf("unexpected sender length: %d", length)
-		return t
-	}
-
-	t.Sender = "0x" + hex.EncodeToString(senderBytes)
+	t.Sender = addr
 	return t
 }
 
@@ -47,17 +48,17 @@ func (t *Transaction) SetSequenceNumber(seq interface{}) *Transaction {
 		return t
 	}
 
-	switch seq.(type) {
+	switch seq := seq.(type) {
 	case uint64:
-		t.SequenceNumber = new(big.Int).SetUint64(seq.(uint64)).String()
+		t.SequenceNumber = seq
 	case string:
-		s, ok := new(big.Int).SetString(seq.(string), 10)
+		s, ok := new(big.Int).SetString(seq, 10)
 		if !ok {
 			t.err = fmt.Errorf("seq new(big.Int).SetString failed")
 			return t
 		}
 
-		t.SequenceNumber = s.String()
+		t.SequenceNumber = s.Uint64()
 	default:
 		t.err = fmt.Errorf("unexpected type: %T", seq)
 		return t
@@ -71,17 +72,17 @@ func (t *Transaction) SetMaxGasAmount(maxGasAmount interface{}) *Transaction {
 		return t
 	}
 
-	switch maxGasAmount.(type) {
+	switch maxGasAmount := maxGasAmount.(type) {
 	case uint64:
-		t.MaxGasAmount = new(big.Int).SetUint64(maxGasAmount.(uint64)).String()
+		t.MaxGasAmount = maxGasAmount
 	case string:
-		s, ok := new(big.Int).SetString(maxGasAmount.(string), 10)
+		s, ok := new(big.Int).SetString(maxGasAmount, 10)
 		if !ok {
 			t.err = fmt.Errorf("seq new(big.Int).SetString failed")
 			return t
 		}
 
-		t.MaxGasAmount = s.String()
+		t.MaxGasAmount = s.Uint64()
 	default:
 		t.err = fmt.Errorf("unexpected type: %T", maxGasAmount)
 		return t
@@ -95,17 +96,17 @@ func (t *Transaction) SetGasUnitPrice(gasUnitPrice interface{}) *Transaction {
 		return t
 	}
 
-	switch gasUnitPrice.(type) {
+	switch gasUnitPrice := gasUnitPrice.(type) {
 	case uint64:
-		t.GasUnitPrice = new(big.Int).SetUint64(gasUnitPrice.(uint64)).String()
+		t.GasUnitPrice = gasUnitPrice
 	case string:
-		s, ok := new(big.Int).SetString(gasUnitPrice.(string), 10)
+		s, ok := new(big.Int).SetString(gasUnitPrice, 10)
 		if !ok {
 			t.err = fmt.Errorf("seq new(big.Int).SetString failed")
 			return t
 		}
 
-		t.GasUnitPrice = s.String()
+		t.GasUnitPrice = s.Uint64()
 	default:
 		t.err = fmt.Errorf("unexpected type: %T", gasUnitPrice)
 		return t
@@ -114,31 +115,22 @@ func (t *Transaction) SetGasUnitPrice(gasUnitPrice interface{}) *Transaction {
 	return t
 }
 
-func (t *Transaction) SetGasCurrencyCode(gasCurrencyCode string) *Transaction {
-	if t.hasError() {
-		return t
-	}
-
-	t.GasCurrencyCode = gasCurrencyCode
-	return t
-}
-
 func (t *Transaction) SetExpirationTimestampSecs(expirationTimestampSecs interface{}) *Transaction {
 	if t.hasError() {
 		return t
 	}
 
-	switch expirationTimestampSecs.(type) {
+	switch secs := expirationTimestampSecs.(type) {
 	case uint64:
-		t.ExpirationTimestampSecs = new(big.Int).SetUint64(expirationTimestampSecs.(uint64)).String()
+		t.ExpirationTimestampSecs = secs
 	case string:
-		s, ok := new(big.Int).SetString(expirationTimestampSecs.(string), 10)
+		s, ok := new(big.Int).SetString(secs, 10)
 		if !ok {
 			t.err = fmt.Errorf("seq new(big.Int).SetString failed")
 			return t
 		}
 
-		t.ExpirationTimestampSecs = s.String()
+		t.ExpirationTimestampSecs = s.Uint64()
 	default:
 		t.err = fmt.Errorf("unexpected type: %T", expirationTimestampSecs)
 		return t
@@ -146,33 +138,55 @@ func (t *Transaction) SetExpirationTimestampSecs(expirationTimestampSecs interfa
 	return t
 }
 
-func (t *Transaction) SetPayload(payloadType string, typeArgs []string, args []interface{}, payload interface{}) *Transaction {
+func (t *Transaction) SetPayload(payload TransactionPayload) *Transaction {
 	if t.hasError() {
 		return t
 	}
 
-	switch payloadType {
-	case "entry_function_payload", "script_payload",
-		"module_bundle_payload", "write_set_payload":
-		t.Payload.Type = payloadType
-		t.Payload.TypeArguments = typeArgs
-		t.Payload.Arguments = args
-	default:
-		t.err = fmt.Errorf("unexpected type %s", payloadType)
-		return t
-	}
+	switch payload := payload.(type) {
+	case ScriptPayload:
+		if payload.TypeArguments == nil {
+			payload.TypeArguments = make([]TypeTag, 0)
+		}
 
-	switch payload.(type) {
-	case client.ScriptFunctionPayload:
-		t.Payload.ScriptFunctionPayload = payload.(client.ScriptFunctionPayload)
-	case client.ScriptPayload:
-		t.Payload.ScriptPayload = payload.(client.ScriptPayload)
-	case client.ModuleBundlePayload:
-		t.Payload.ModuleBundlePayload = payload.(client.ModuleBundlePayload)
-	case client.WriteSetPayload:
-		t.Payload.WriteSetPayload = payload.(client.WriteSetPayload)
+		if payload.Arguments == nil {
+			payload.Arguments = make([]TransactionArgument, 0)
+		}
+
+		t.Payload = payload
+	case ModuleBundlePayload:
+		t.Payload = payload
+	case EntryFunctionPayload:
+		if payload.TypeArguments == nil {
+			payload.TypeArguments = make([]TypeTag, 0)
+		}
+
+		payload.ArgumentsBCS = make([][]byte, len(payload.Arguments))
+		for i, arg := range payload.Arguments {
+			switch arg := arg.(type) {
+			case AccountAddress:
+				payload.ArgumentsBCS[i], t.err = lcs.Marshal(&arg)
+			case [32]byte:
+				payload.ArgumentsBCS[i], t.err = lcs.Marshal(&arg)
+			case []byte:
+				payload.ArgumentsBCS[i], t.err = lcs.Marshal(&arg)
+			case string:
+				payload.ArgumentsBCS[i], t.err = lcs.Marshal(&arg)
+			case uint64:
+				payload.ArgumentsBCS[i], t.err = lcs.Marshal(&arg)
+			case uint8:
+				payload.ArgumentsBCS[i], t.err = lcs.Marshal(&arg)
+			case bool:
+				payload.ArgumentsBCS[i], t.err = lcs.Marshal(&arg)
+			}
+			if t.err != nil {
+				t.err = fmt.Errorf("marshal arguments[%d] %v: %v", i, arg, t.err)
+				return t
+			}
+		}
+		t.Payload = payload
 	default:
-		t.err = fmt.Errorf("unexpected payload type %T", payloadType)
+		t.err = fmt.Errorf("unexpected payload type %T", payload)
 		return t
 	}
 
@@ -184,12 +198,7 @@ func (t *Transaction) SetSignature(sigType string, signature interface{}) *Trans
 		return t
 	}
 
-	t.Signature = &struct {
-		Type string `json:"type"`
-		client.MultiED25519Signature
-		client.ED25519Signature
-		client.MultiAgentSignature
-	}{}
+	t.Signature = &Signature{}
 
 	switch sigType {
 	case "ed25519_signature", "multi_ed25519_signature", "multi_agent_signature":
@@ -199,34 +208,34 @@ func (t *Transaction) SetSignature(sigType string, signature interface{}) *Trans
 		return t
 	}
 
-	switch signature.(type) {
-	case client.ED25519Signature:
-		t.Signature.ED25519Signature = signature.(client.ED25519Signature)
+	switch sig := signature.(type) {
+	case ED25519Signature:
+		t.Signature.ED25519Signature = sig
 		if err := t.validateED25519(t.Signature.ED25519Signature); err != nil {
 			t.err = err
 			return t
 		}
-	case client.MultiED25519Signature:
-		t.Signature.MultiED25519Signature = signature.(client.MultiED25519Signature)
+	case MultiED25519Signature:
+		t.Signature.MultiED25519Signature = sig
 		if err := t.validateMultiED25519(t.Signature.MultiED25519Signature); err != nil {
 			t.err = err
 			return t
 		}
-	case client.MultiAgentSignature:
-		t.Signature.MultiAgentSignature = signature.(client.MultiAgentSignature)
+	case MultiAgentSignature:
+		t.Signature.MultiAgentSignature = sig
 		if err := t.validateMultiAgent(t.Signature.MultiAgentSignature); err != nil {
 			t.err = err
 			return t
 		}
 	default:
-		t.err = fmt.Errorf("unexpected signature type %T", signature)
+		t.err = fmt.Errorf("unexpected signature type %T", sig)
 		return t
 	}
 
 	return t
 }
 
-func (t *Transaction) SetSecondarySigners(secondarySigners []string) *Transaction {
+func (t *Transaction) SetSecondarySigners(secondarySigners []AccountAddress) *Transaction {
 	if t.hasError() {
 		return t
 	}
@@ -235,15 +244,10 @@ func (t *Transaction) SetSecondarySigners(secondarySigners []string) *Transactio
 	return t
 }
 
-func (t Transaction) TxForSimulate() client.Transaction {
-	tx := t.Transaction
+func (t Transaction) TxForSimulate() UserTransaction {
+	tx := t.UserTransaction
 	zeroSig := "0x" + strings.Repeat("00", 64)
-	tx.Signature = &struct {
-		Type string `json:"type"`
-		client.MultiED25519Signature
-		client.ED25519Signature
-		client.MultiAgentSignature
-	}{
+	tx.Signature = &Signature{
 		Type:                  tx.Signature.Type,
 		ED25519Signature:      tx.Signature.ED25519Signature,
 		MultiED25519Signature: tx.Signature.MultiED25519Signature,
@@ -277,8 +281,8 @@ func (t Transaction) TxForSimulate() client.Transaction {
 
 		newSecondarySigners := make([]struct {
 			Type string `json:"type"`
-			client.ED25519Signature
-			client.MultiED25519Signature
+			ED25519Signature
+			MultiED25519Signature
 		}, len(tx.Signature.SecondarySigners))
 		for i, signer := range tx.Signature.SecondarySigners {
 			newSecondarySigners[i].Type = signer.Type
@@ -364,21 +368,14 @@ func (t Transaction) validateSigWithPub(sig, pub string) error {
 		return err
 	}
 
-	sigMsg := strings.TrimPrefix(t.SigningMessage, "0x")
-	sigMsg = strings.TrimPrefix(sigMsg, "0X")
-	sigMsgBytes, err := hex.DecodeString(sigMsg)
-	if err != nil {
-		return err
-	}
-
-	if !ed25519.Verify(pubBytes, sigMsgBytes, sigBytes) {
+	if !ed25519.Verify(pubBytes, t.signingMessage, sigBytes) {
 		return fmt.Errorf("ed25519.Verify failed")
 	}
 
 	return nil
 }
 
-func (t Transaction) validateED25519(ed25519Sig client.ED25519Signature) error {
+func (t Transaction) validateED25519(ed25519Sig ED25519Signature) error {
 	if err := t.validatePub(ed25519Sig.PublicKey); err != nil {
 		return err
 	}
@@ -394,7 +391,7 @@ func (t Transaction) validateED25519(ed25519Sig client.ED25519Signature) error {
 	return nil
 }
 
-func (t Transaction) validateMultiED25519(multiED25519Sig client.MultiED25519Signature) error {
+func (t Transaction) validateMultiED25519(multiED25519Sig MultiED25519Signature) error {
 	if len(multiED25519Sig.Signatures) < multiED25519Sig.Threshold {
 		return fmt.Errorf("signatures size(%d) must >= threshold(%d)",
 			len(multiED25519Sig.Signatures), multiED25519Sig.Threshold)
@@ -444,7 +441,7 @@ func (t Transaction) validateMultiED25519(multiED25519Sig client.MultiED25519Sig
 	return nil
 }
 
-func (t Transaction) validateMultiAgent(multiAgentSig client.MultiAgentSignature) error {
+func (t Transaction) validateMultiAgent(multiAgentSig MultiAgentSignature) error {
 	switch multiAgentSig.Sender.Type {
 	case "ed25519_signature":
 		if err := t.validateED25519(multiAgentSig.Sender.ED25519Signature); err != nil {
@@ -481,20 +478,50 @@ func (t Transaction) validateMultiAgent(multiAgentSig client.MultiAgentSignature
 	return nil
 }
 
+// "0xb5e97db07fa0bd0e5598aa3643a9bc6f6693bddc1a9fec9e674a461eaa00b193"
+var RawTransactionSalt = sha3.Sum256([]byte("APTOS::RawTransaction"))
+
+// "0x5efa3c4f02f83a0f4b2d69fc95c607cc02825cc4e7be536ef0992df050d9e67c"
+var RawTransactionWithDataSalt = sha3.Sum256([]byte("APTOS::RawTransactionWithData"))
+
+func (t Transaction) GetSigningMessage() ([]byte, error) {
+	if t.signingMessage != nil {
+		return t.signingMessage, nil
+	}
+
+	// MultiAgentRawTransaction
+	if len(t.SecondarySigners) > 0 {
+		rawTransactionWithData := t.GetRawTransactionWithData()
+		bcsBytes, err := lcs.Marshal(&rawTransactionWithData)
+		if err != nil {
+			return nil, err
+		}
+
+		return append(RawTransactionWithDataSalt[:], bcsBytes...), nil
+	} else {
+		bcsBytes, err := lcs.Marshal(t.RawTransaction)
+		if err != nil {
+			return nil, err
+		}
+
+		return append(RawTransactionSalt[:], bcsBytes...), nil
+	}
+
+}
+
 func (t *Transaction) SetSigningMessage(signingMessage string) *Transaction {
 	if t.hasError() {
 		return t
 	}
 
 	signingMessage = strings.TrimPrefix(signingMessage, "0x")
-	signingMessage = strings.TrimPrefix(signingMessage, "0X")
-	_, err := hex.DecodeString(signingMessage)
+	msg, err := hex.DecodeString(signingMessage)
 	if err != nil {
 		t.err = err
 		return t
 	}
 
-	t.SigningMessage = signingMessage
+	t.signingMessage = msg
 	return t
 }
 

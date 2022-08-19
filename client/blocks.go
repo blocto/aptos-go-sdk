@@ -15,12 +15,12 @@ type BlocksImpl struct {
 }
 
 type Block struct {
-	BlockHeight    string        `json:"block_height"`
-	BlockHash      string        `json:"block_hash"`
-	BlockTimestamp string        `json:"block_timestamp"`
-	FirstVersion   string        `json:"first_version"`
-	LastVersion    string        `json:"last_version"`
-	Transactions   []Transaction `json:"transactions"`
+	BlockHeight    string            `json:"block_height"`
+	BlockHash      string            `json:"block_hash"`
+	BlockTimestamp string            `json:"block_timestamp"`
+	FirstVersion   string            `json:"first_version"`
+	LastVersion    string            `json:"last_version"`
+	Transactions   []TransactionResp `json:"transactions"`
 }
 
 func (impl BlocksImpl) GetBlocksByHeight(height uint64, withTransactions bool, opts ...interface{}) (*Block, error) {
