@@ -84,7 +84,7 @@ func replaceAuthKey() {
 	newAuthKey := crypto.SingleSignerAuthKey(newPub)
 	tx := transactions.Transaction{}
 	err = tx.SetSender(address).
-		SetPayload("script_function_payload",
+		SetPayload("entry_function_payload",
 			[]string{},
 			[]interface{}{
 				hex.EncodeToString(newAuthKey[:]),
@@ -151,7 +151,7 @@ func transferTxMultiED25519() {
 
 	tx := transactions.Transaction{}
 	err = tx.SetSender(address).
-		SetPayload("script_function_payload",
+		SetPayload("entry_function_payload",
 			[]string{"0x1::aptos_coin::AptosCoin"},
 			[]interface{}{
 				faucetAdminAddress,
@@ -244,7 +244,7 @@ func createAccountTx(keyNum int) (authKey [32]byte, seeds []string) {
 
 	tx := transactions.Transaction{}
 	err = tx.SetSender(faucetAdminAddress).
-		SetPayload("script_function_payload",
+		SetPayload("entry_function_payload",
 			[]string{},
 			[]interface{}{
 				hex.EncodeToString(authKey[:]),
@@ -307,7 +307,7 @@ func faucet(address string, amount string) {
 	priv := ed25519.NewKeyFromSeed(faucetAdminSeed)
 	tx := transactions.Transaction{}
 	err = tx.SetSender(faucetAdminAddress).
-		SetPayload("script_function_payload",
+		SetPayload("entry_function_payload",
 			[]string{"0x1::aptos_coin::AptosCoin"},
 			[]interface{}{
 				address,
@@ -372,7 +372,7 @@ func invokeMultiAgent() {
 
 	tx := transactions.Transaction{}
 	err = tx.SetSender(sender).
-		SetPayload("script_function_payload",
+		SetPayload("entry_function_payload",
 			[]string{},
 			[]interface{}{
 				hex.EncodeToString([]byte("aptos-is-goooooood!")),
@@ -686,7 +686,7 @@ func createWeightAccountTx() (authKey [32]byte, seeds []string) {
 
 	tx := transactions.Transaction{}
 	err = tx.SetSender(faucetAdminAddress).
-		SetPayload("script_function_payload",
+		SetPayload("entry_function_payload",
 			[]string{},
 			[]interface{}{
 				hex.EncodeToString(authKey[:]),
@@ -754,7 +754,7 @@ func transferTxWeightedMultiED25519() {
 
 	tx := transactions.Transaction{}
 	err = tx.SetSender(address).
-		SetPayload("script_function_payload",
+		SetPayload("entry_function_payload",
 			[]string{"0x1::aptos_coin::AptosCoin"},
 			[]interface{}{
 				faucetAdminAddress,
