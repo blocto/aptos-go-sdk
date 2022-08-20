@@ -121,25 +121,14 @@ func replaceAuthKey() {
 		panic(err)
 	}
 
-	signingMsg, err := api.EncodeSubmission(tx.UserTransaction.ToRequest())
-	if err != nil {
-		panic(err)
-	}
-
 	msgBytes, err := tx.GetSigningMessage()
 	if err != nil {
 		panic(err)
 	}
 
-	err = tx.SetSigningMessage(signingMsg.Message).Error()
+	err = tx.SetSigningMessage(hex.EncodeToString(msgBytes)).Error()
 	if err != nil {
 		panic(err)
-	}
-
-	if hex.EncodeToString(msgBytes) != signingMsg.Message[2:] {
-		fmt.Println("signing msg:", signingMsg.Message[2:])
-		fmt.Println("bcs message:", hex.EncodeToString(msgBytes))
-		panic("signing message does not match")
 	}
 
 	signature := ed25519.Sign(priv, msgBytes)
@@ -191,25 +180,14 @@ func transferTxMultiED25519() {
 		panic(err)
 	}
 
-	signingMsg, err := api.EncodeSubmission(tx.UserTransaction.ToRequest())
-	if err != nil {
-		panic(err)
-	}
-
 	msgBytes, err := tx.GetSigningMessage()
 	if err != nil {
 		panic(err)
 	}
 
-	err = tx.SetSigningMessage(signingMsg.Message).Error()
+	err = tx.SetSigningMessage(hex.EncodeToString(msgBytes)).Error()
 	if err != nil {
 		panic(err)
-	}
-
-	if hex.EncodeToString(msgBytes) != signingMsg.Message[2:] {
-		fmt.Println("signing msg:", signingMsg.Message[2:])
-		fmt.Println("bcs message:", hex.EncodeToString(msgBytes))
-		panic("signing message does not match")
 	}
 
 	key1, _ := hex.DecodeString(seeds[0])
@@ -292,25 +270,14 @@ func createAccountTx(keyNum int) (authKey [32]byte, seeds []string) {
 		panic(err)
 	}
 
-	signingMsg, err := api.EncodeSubmission(tx.UserTransaction.ToRequest())
-	if err != nil {
-		panic(err)
-	}
-
 	msgBytes, err := tx.GetSigningMessage()
 	if err != nil {
 		panic(err)
 	}
 
-	err = tx.SetSigningMessage(signingMsg.Message).Error()
+	err = tx.SetSigningMessage(hex.EncodeToString(msgBytes)).Error()
 	if err != nil {
 		panic(err)
-	}
-
-	if hex.EncodeToString(msgBytes) != signingMsg.Message[2:] {
-		fmt.Println("signing msg:", signingMsg.Message[2:])
-		fmt.Println("bcs message:", hex.EncodeToString(msgBytes))
-		panic("signing message does not match")
 	}
 
 	signature := ed25519.Sign(faucetAdminPriv, msgBytes)
@@ -360,25 +327,14 @@ func faucet(address models.AccountAddress, amount uint64) {
 		panic(err)
 	}
 
-	signingMsg, err := api.EncodeSubmission(tx.UserTransaction.ToRequest())
-	if err != nil {
-		panic(err)
-	}
-
 	msgBytes, err := tx.GetSigningMessage()
 	if err != nil {
 		panic(err)
 	}
 
-	err = tx.SetSigningMessage(signingMsg.Message).Error()
+	err = tx.SetSigningMessage(hex.EncodeToString(msgBytes)).Error()
 	if err != nil {
 		panic(err)
-	}
-
-	if hex.EncodeToString(msgBytes) != signingMsg.Message[2:] {
-		fmt.Println("signing msg:", signingMsg.Message[2:])
-		fmt.Println("bcs message:", hex.EncodeToString(msgBytes))
-		panic("signing message does not match")
 	}
 
 	signature := ed25519.Sign(priv, msgBytes)
@@ -437,23 +393,12 @@ func invokeMultiAgent() {
 		panic(err)
 	}
 
-	signingMsg, err := api.EncodeSubmission(tx.UserTransaction.ToRequest())
-	if err != nil {
-		panic(err)
-	}
-
 	msgBytes, err := tx.GetSigningMessage()
 	if err != nil {
 		panic(err)
 	}
 
-	if hex.EncodeToString(msgBytes) != signingMsg.Message[2:] {
-		fmt.Println("signing msg:", signingMsg.Message[2:])
-		fmt.Println("bcs message:", hex.EncodeToString(msgBytes))
-		panic("signing message does not match")
-	}
-
-	err = tx.SetSigningMessage(signingMsg.Message).Error()
+	err = tx.SetSigningMessage(hex.EncodeToString(msgBytes)).Error()
 	if err != nil {
 		panic(err)
 	}
@@ -554,26 +499,15 @@ func invokeScriptPayload() {
 		panic(err)
 	}
 
-	signingMsg, err := api.EncodeSubmission(tx.UserTransaction.ToRequest())
-	if err != nil {
-		panic(err)
-	}
-
 	msgBytes, err := tx.GetSigningMessage()
 	if err != nil {
 		fmt.Printf("%+v\n", tx.UserTransaction)
 		panic(err)
 	}
 
-	err = tx.SetSigningMessage(signingMsg.Message).Error()
+	err = tx.SetSigningMessage(hex.EncodeToString(msgBytes)).Error()
 	if err != nil {
 		panic(err)
-	}
-
-	if hex.EncodeToString(msgBytes) != signingMsg.Message[2:] {
-		fmt.Println("signing msg:", signingMsg.Message[2:])
-		fmt.Println("bcs message:", hex.EncodeToString(msgBytes))
-		panic("signing message does not match")
 	}
 
 	signature := ed25519.Sign(priv, msgBytes)
@@ -637,17 +571,12 @@ func invokeMultiAgentScriptPayload(scriptName string, typeArgs []models.TypeTag,
 		panic(err)
 	}
 
-	signingMsg, err := api.EncodeSubmission(tx.UserTransaction.ToRequest())
+	msgBytes, err := tx.GetSigningMessage()
 	if err != nil {
 		panic(err)
 	}
 
-	err = tx.SetSigningMessage(signingMsg.Message).Error()
-	if err != nil {
-		panic(err)
-	}
-
-	msgBytes, err := hex.DecodeString(signingMsg.Message[2:])
+	err = tx.SetSigningMessage(hex.EncodeToString(msgBytes)).Error()
 	if err != nil {
 		panic(err)
 	}
@@ -758,25 +687,14 @@ func createWeightAccountTx() (authKey [32]byte, seeds []string) {
 		panic(err)
 	}
 
-	signingMsg, err := api.EncodeSubmission(tx.ToRequest())
-	if err != nil {
-		panic(err)
-	}
-
 	msgBytes, err := tx.GetSigningMessage()
 	if err != nil {
 		panic(err)
 	}
 
-	err = tx.SetSigningMessage(signingMsg.Message).Error()
+	err = tx.SetSigningMessage(hex.EncodeToString(msgBytes)).Error()
 	if err != nil {
 		panic(err)
-	}
-
-	if hex.EncodeToString(msgBytes) != signingMsg.Message[2:] {
-		fmt.Println("signing msg:", signingMsg.Message[2:])
-		fmt.Println("bcs message:", hex.EncodeToString(msgBytes))
-		panic("signing message does not match")
 	}
 
 	signature := ed25519.Sign(faucetAdminPriv, msgBytes)
@@ -827,25 +745,14 @@ func transferTxWeightedMultiED25519() {
 		panic(err)
 	}
 
-	signingMsg, err := api.EncodeSubmission(tx.ToRequest())
-	if err != nil {
-		panic(err)
-	}
-
 	msgBytes, err := tx.GetSigningMessage()
 	if err != nil {
 		panic(err)
 	}
 
-	err = tx.SetSigningMessage(signingMsg.Message).Error()
+	err = tx.SetSigningMessage(hex.EncodeToString(msgBytes)).Error()
 	if err != nil {
 		panic(err)
-	}
-
-	if hex.EncodeToString(msgBytes) != signingMsg.Message[2:] {
-		fmt.Println("signing msg:", signingMsg.Message[2:])
-		fmt.Println("bcs message:", hex.EncodeToString(msgBytes))
-		panic("signing message does not match")
 	}
 
 	key1, _ := hex.DecodeString(seeds[0])
