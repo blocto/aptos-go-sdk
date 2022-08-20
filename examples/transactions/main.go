@@ -377,7 +377,7 @@ func invokeMultiAgent() {
 		SetPayload(models.EntryFunctionPayload{
 			Module: models.Module{
 				Address: addr,
-				Name:    "message_multi_agent",
+				Name:    "message_multi_agent_1",
 			},
 			Function:  "set_message",
 			Arguments: []interface{}{"aptos-is-goooooood!"},

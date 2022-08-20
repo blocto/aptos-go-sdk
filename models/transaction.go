@@ -509,6 +509,38 @@ func (t Transaction) GetSigningMessage() ([]byte, error) {
 
 }
 
+func (t *Transaction) DecodeFromHex(s string) error {
+	s = strings.TrimPrefix(s, "0x")
+	s = strings.TrimPrefix(s, "0X")
+	bcsBytes, err := hex.DecodeString(s)
+	if err != nil {
+		return fmt.Errorf("hex.DecodeFromHex error: %v", err)
+	}
+
+	if len(bcsBytes) < 32 {
+		return fmt.Errorf("incorrect prefix len: %d", len(s))
+	}
+
+	switch prefix := hex.EncodeToString(bcsBytes[:32]); prefix {
+	case hex.EncodeToString(RawTransactionWithDataSalt[:]):
+		var rawTransactionWithData RawTransactionWithData = MultiAgent{}
+		if err := lcs.Unmarshal(bcsBytes[32:], &rawTransactionWithData); err != nil {
+			return fmt.Errorf("MultiAgent lcs.Unmarshal error: %v", err)
+		}
+
+		t.UserTransaction.RawTransaction = rawTransactionWithData.(MultiAgent).RawTransaction
+		t.UserTransaction.SecondarySigners = rawTransactionWithData.(MultiAgent).SecondarySigners
+	case hex.EncodeToString(RawTransactionSalt[:]):
+		if err := lcs.Unmarshal(bcsBytes[32:], &t.UserTransaction.RawTransaction); err != nil {
+			return fmt.Errorf("RawTransaction lcs.Unmarshal error: %v", err)
+		}
+	default:
+		return fmt.Errorf("unexpected prefix: %s", prefix)
+	}
+
+	return nil
+}
+
 func (t *Transaction) SetSigningMessage(signingMessage string) *Transaction {
 	if t.hasError() {
 		return t
