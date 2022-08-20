@@ -57,7 +57,7 @@ func main() {
 		})
 	fmt.Println("=====")
 	waitForTxConfirmed()
-	invokeMultiAgentScriptPayload("multi_agent_transfer",
+	invokeMultiAgentScriptPayload("multi_agent_coin_transfer",
 		[]models.TypeTag{
 			aptosCoinTypeTag,
 		},
@@ -68,6 +68,16 @@ func main() {
 	fmt.Println("=====")
 	waitForTxConfirmed()
 	transferTxWeightedMultiED25519()
+	fmt.Println("=====")
+	waitForTxConfirmed()
+	moonCoinAddr, _ := models.HexToAccountAddress("0x86e4d830197448f975b748f69bd1b3b6d219a07635269a0b4e7f27966771e850")
+	invokeMultiAgentScriptPayload("multi_agent_coin_register", []models.TypeTag{
+		models.TypeTagStruct{
+			Address: moonCoinAddr,
+			Module:  "moon_coin",
+			Name:    "MoonCoin",
+		},
+	}, []models.TransactionArgument{})
 	fmt.Println("=====")
 }
 
