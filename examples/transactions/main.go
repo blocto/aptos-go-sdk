@@ -9,18 +9,30 @@ import (
 
 	"github.com/portto/aptos-go-sdk/client"
 	"github.com/portto/aptos-go-sdk/crypto"
-	"github.com/portto/aptos-go-sdk/transactions"
+	"github.com/portto/aptos-go-sdk/models"
 )
+
+const DevnetChainID = 24
 
 var api client.API
 var faucetAdminSeed []byte
 var faucetAdminAddress string
+var faucetAdminAddr models.AccountAddress
+var addr0x1 models.AccountAddress
+var aptosCoinTypeTag models.TypeTag
 
 func init() {
 	api = client.New("https://fullnode.devnet.aptoslabs.com/v1")
 	// please set up the account address & seed which has enough balance
 	faucetAdminSeed, _ = hex.DecodeString("784bc4d62c5e96b42addcbee3e5ccc0f7641fa82e9a3462d9a34d06e474274fe")
 	faucetAdminAddress = "86e4d830197448f975b748f69bd1b3b6d219a07635269a0b4e7f27966771e850"
+	faucetAdminAddr, _ = models.HexToAccountAddress(faucetAdminAddress)
+	addr0x1, _ = models.HexToAccountAddress("0x01")
+	aptosCoinTypeTag = models.TypeTagStruct{
+		Address: addr0x1,
+		Module:  "aptos_coin",
+		Name:    "AptosCoin",
+	}
 }
 
 func main() {
@@ -33,29 +45,34 @@ func main() {
 	waitForTxConfirmed()
 	invokeScriptPayload()
 	fmt.Println("=====")
-	invokeMultiAgentScriptPayload("multi_agent_set_message", []string{}, []interface{}{
-		hex.EncodeToString([]byte("hi~ aptos")),
-	})
+	invokeMultiAgentScriptPayload("multi_agent_set_message", nil,
+		[]models.TransactionArgument{
+			models.TxArgU8Vector{Bytes: []byte("hi~ aptos")},
+		})
 	fmt.Println("=====")
 	waitForTxConfirmed()
-	invokeMultiAgentScriptPayload("multi_agent_rotate_authentication_key", []string{}, []interface{}{
-		hex.EncodeToString(make([]byte, 32)),
-	})
+	invokeMultiAgentScriptPayload("multi_agent_rotate_authentication_key", nil,
+		[]models.TransactionArgument{
+			models.TxArgU8Vector{Bytes: make([]byte, 32)},
+		})
 	fmt.Println("=====")
 	waitForTxConfirmed()
-	invokeMultiAgentScriptPayload("multi_agent_transfer", []string{
-		"0x1::aptos_coin::AptosCoin",
-	}, []interface{}{
-		faucetAdminAddress,
-		"1",
-	}, "1")
+	invokeMultiAgentScriptPayload("multi_agent_transfer",
+		[]models.TypeTag{
+			aptosCoinTypeTag,
+		},
+		[]models.TransactionArgument{
+			models.TxArgAddress{Addr: faucetAdminAddr},
+			models.TxArgU64{U64: 1},
+		}, 1)
 	fmt.Println("=====")
+	waitForTxConfirmed()
 	transferTxWeightedMultiED25519()
 	fmt.Println("=====")
 }
 
 func waitForTxConfirmed() {
-	time.Sleep(15 * time.Second)
+	time.Sleep(5 * time.Second)
 }
 
 func replaceAuthKey() {
@@ -73,7 +90,7 @@ func replaceAuthKey() {
 	}
 
 	waitForTxConfirmed()
-	faucet(address, "50")
+	faucet(authKey, 50)
 	waitForTxConfirmed()
 
 	accountInfo, err := api.GetAccount(address)
@@ -82,15 +99,20 @@ func replaceAuthKey() {
 	}
 
 	newAuthKey := crypto.SingleSignerAuthKey(newPub)
-	tx := transactions.Transaction{}
-	err = tx.SetSender(address).
-		SetPayload("entry_function_payload",
-			[]string{},
-			[]interface{}{
-				hex.EncodeToString(newAuthKey[:]),
-			}, client.ScriptFunctionPayload{
-				Function: "0x1::account::rotate_authentication_key",
-			}).
+	tx := models.Transaction{}
+	err = tx.SetChainID(DevnetChainID).
+		SetSender(address).
+		SetPayload(models.EntryFunctionPayload{
+			Module: models.Module{
+				Address: addr0x1,
+				Name:    "account",
+			},
+			Function: "rotate_authentication_key",
+			Arguments: []interface{}{
+				newAuthKey[:],
+			},
+		},
+		).
 		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
 		SetGasUnitPrice(uint64(1)).
 		SetMaxGasAmount(uint64(50)).
@@ -99,7 +121,12 @@ func replaceAuthKey() {
 		panic(err)
 	}
 
-	signingMsg, err := api.EncodeSubmission(tx.Transaction)
+	signingMsg, err := api.EncodeSubmission(tx.UserTransaction.ToRequest())
+	if err != nil {
+		panic(err)
+	}
+
+	msgBytes, err := tx.GetSigningMessage()
 	if err != nil {
 		panic(err)
 	}
@@ -109,13 +136,14 @@ func replaceAuthKey() {
 		panic(err)
 	}
 
-	msgBytes, err := hex.DecodeString(signingMsg.Message[2:])
-	if err != nil {
-		panic(err)
+	if hex.EncodeToString(msgBytes) != signingMsg.Message[2:] {
+		fmt.Println("signing msg:", signingMsg.Message[2:])
+		fmt.Println("bcs message:", hex.EncodeToString(msgBytes))
+		panic("signing message does not match")
 	}
 
 	signature := ed25519.Sign(priv, msgBytes)
-	err = tx.SetSignature("ed25519_signature", client.ED25519Signature{
+	err = tx.SetSignature("ed25519_signature", models.ED25519Signature{
 		PublicKey: hex.EncodeToString(priv.Public().(ed25519.PublicKey)[:]),
 		Signature: hex.EncodeToString(signature),
 	}).Error()
@@ -124,12 +152,12 @@ func replaceAuthKey() {
 	}
 
 	txForSimulate := tx.TxForSimulate()
-	_, err = api.SimulateTransaction(txForSimulate)
+	_, err = api.SimulateTransaction(txForSimulate.ToRequest())
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.Transaction)
+	rawTx, err := api.SubmitTransaction(tx.ToRequest())
 	if err != nil {
 		panic(err)
 	}
@@ -141,7 +169,7 @@ func transferTxMultiED25519() {
 	authKey, seeds := createAccountTx(2)
 	address := hex.EncodeToString(authKey[:])
 	waitForTxConfirmed()
-	faucet(address, "100")
+	faucet(authKey, 100)
 	waitForTxConfirmed()
 
 	accountInfo, err := api.GetAccount(address)
@@ -149,16 +177,12 @@ func transferTxMultiED25519() {
 		panic(err)
 	}
 
-	tx := transactions.Transaction{}
-	err = tx.SetSender(address).
-		SetPayload("entry_function_payload",
-			[]string{"0x1::aptos_coin::AptosCoin"},
-			[]interface{}{
-				faucetAdminAddress,
-				"1",
-			}, client.ScriptFunctionPayload{
-				Function: "0x1::coin::transfer",
-			}).
+	addr, _ := models.HexToAccountAddress(faucetAdminAddress)
+
+	tx := models.Transaction{}
+	err = tx.SetChainID(DevnetChainID).
+		SetSender(address).
+		SetPayload(getTransferPayload(addr, 1)).
 		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
 		SetGasUnitPrice(uint64(1)).
 		SetMaxGasAmount(uint64(100)).
@@ -167,7 +191,12 @@ func transferTxMultiED25519() {
 		panic(err)
 	}
 
-	signingMsg, err := api.EncodeSubmission(tx.Transaction)
+	signingMsg, err := api.EncodeSubmission(tx.UserTransaction.ToRequest())
+	if err != nil {
+		panic(err)
+	}
+
+	msgBytes, err := tx.GetSigningMessage()
 	if err != nil {
 		panic(err)
 	}
@@ -177,9 +206,10 @@ func transferTxMultiED25519() {
 		panic(err)
 	}
 
-	msgBytes, err := hex.DecodeString(signingMsg.Message[2:])
-	if err != nil {
-		panic(err)
+	if hex.EncodeToString(msgBytes) != signingMsg.Message[2:] {
+		fmt.Println("signing msg:", signingMsg.Message[2:])
+		fmt.Println("bcs message:", hex.EncodeToString(msgBytes))
+		panic("signing message does not match")
 	}
 
 	key1, _ := hex.DecodeString(seeds[0])
@@ -187,7 +217,7 @@ func transferTxMultiED25519() {
 	priv1 := ed25519.NewKeyFromSeed(key1)
 	priv2 := ed25519.NewKeyFromSeed(key2)
 	signature := ed25519.Sign(priv2, msgBytes)
-	err = tx.SetSignature("multi_ed25519_signature", client.MultiED25519Signature{
+	err = tx.SetSignature("multi_ed25519_signature", models.MultiED25519Signature{
 		PublicKeys: []string{hex.EncodeToString(priv1.Public().(ed25519.PublicKey)), hex.EncodeToString(priv2.Public().(ed25519.PublicKey))},
 		Signatures: []string{hex.EncodeToString(signature)},
 		Threshold:  1,
@@ -198,12 +228,12 @@ func transferTxMultiED25519() {
 	}
 
 	txForSimulate := tx.TxForSimulate()
-	_, err = api.SimulateTransaction(txForSimulate)
+	_, err = api.SimulateTransaction(txForSimulate.ToRequest())
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.Transaction)
+	rawTx, err := api.SubmitTransaction(tx.ToRequest())
 	if err != nil {
 		panic(err)
 	}
@@ -242,15 +272,18 @@ func createAccountTx(keyNum int) (authKey [32]byte, seeds []string) {
 		panic(err)
 	}
 
-	tx := transactions.Transaction{}
-	err = tx.SetSender(faucetAdminAddress).
-		SetPayload("entry_function_payload",
-			[]string{},
-			[]interface{}{
-				hex.EncodeToString(authKey[:]),
-			}, client.ScriptFunctionPayload{
-				Function: "0x1::account::create_account",
-			}).
+	tx := models.Transaction{}
+
+	err = tx.SetChainID(DevnetChainID).
+		SetSender(faucetAdminAddress).
+		SetPayload(models.EntryFunctionPayload{
+			Module: models.Module{
+				Address: addr0x1,
+				Name:    "account",
+			},
+			Function:  "create_account",
+			Arguments: []interface{}{authKey},
+		}).
 		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
 		SetGasUnitPrice(uint64(1)).
 		SetMaxGasAmount(uint64(1000)).
@@ -259,7 +292,12 @@ func createAccountTx(keyNum int) (authKey [32]byte, seeds []string) {
 		panic(err)
 	}
 
-	signingMsg, err := api.EncodeSubmission(tx.Transaction)
+	signingMsg, err := api.EncodeSubmission(tx.UserTransaction.ToRequest())
+	if err != nil {
+		panic(err)
+	}
+
+	msgBytes, err := tx.GetSigningMessage()
 	if err != nil {
 		panic(err)
 	}
@@ -269,13 +307,14 @@ func createAccountTx(keyNum int) (authKey [32]byte, seeds []string) {
 		panic(err)
 	}
 
-	msgBytes, err := hex.DecodeString(signingMsg.Message[2:])
-	if err != nil {
-		panic(err)
+	if hex.EncodeToString(msgBytes) != signingMsg.Message[2:] {
+		fmt.Println("signing msg:", signingMsg.Message[2:])
+		fmt.Println("bcs message:", hex.EncodeToString(msgBytes))
+		panic("signing message does not match")
 	}
 
 	signature := ed25519.Sign(faucetAdminPriv, msgBytes)
-	err = tx.SetSignature("ed25519_signature", client.ED25519Signature{
+	err = tx.SetSignature("ed25519_signature", models.ED25519Signature{
 		PublicKey: hex.EncodeToString(faucetAdminPriv.Public().(ed25519.PublicKey)),
 		Signature: hex.EncodeToString(signature),
 	}).Error()
@@ -284,12 +323,12 @@ func createAccountTx(keyNum int) (authKey [32]byte, seeds []string) {
 	}
 
 	txForSimulate := tx.TxForSimulate()
-	_, err = api.SimulateTransaction(txForSimulate)
+	_, err = api.SimulateTransaction(txForSimulate.ToRequest())
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.Transaction)
+	rawTx, err := api.SubmitTransaction(tx.ToRequest())
 	if err != nil {
 		panic(err)
 	}
@@ -298,23 +337,21 @@ func createAccountTx(keyNum int) (authKey [32]byte, seeds []string) {
 	return authKey, seeds
 }
 
-func faucet(address string, amount string) {
+func faucet(address models.AccountAddress, amount uint64) {
 	accountInfo, err := api.GetAccount(faucetAdminAddress)
 	if err != nil {
 		panic(err)
 	}
 
 	priv := ed25519.NewKeyFromSeed(faucetAdminSeed)
-	tx := transactions.Transaction{}
-	err = tx.SetSender(faucetAdminAddress).
-		SetPayload("entry_function_payload",
-			[]string{"0x1::aptos_coin::AptosCoin"},
-			[]interface{}{
-				address,
-				amount,
-			}, client.ScriptFunctionPayload{
-				Function: "0x1::coin::transfer",
-			}).
+	tx := models.Transaction{}
+
+	if err != nil {
+		panic(err)
+	}
+	err = tx.SetChainID(DevnetChainID).
+		SetSender(faucetAdminAddress).
+		SetPayload(getTransferPayload(address, amount)).
 		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
 		SetGasUnitPrice(uint64(1)).
 		SetMaxGasAmount(uint64(500)).
@@ -323,7 +360,12 @@ func faucet(address string, amount string) {
 		panic(err)
 	}
 
-	signingMsg, err := api.EncodeSubmission(tx.Transaction)
+	signingMsg, err := api.EncodeSubmission(tx.UserTransaction.ToRequest())
+	if err != nil {
+		panic(err)
+	}
+
+	msgBytes, err := tx.GetSigningMessage()
 	if err != nil {
 		panic(err)
 	}
@@ -333,13 +375,14 @@ func faucet(address string, amount string) {
 		panic(err)
 	}
 
-	msgBytes, err := hex.DecodeString(signingMsg.Message[2:])
-	if err != nil {
-		panic(err)
+	if hex.EncodeToString(msgBytes) != signingMsg.Message[2:] {
+		fmt.Println("signing msg:", signingMsg.Message[2:])
+		fmt.Println("bcs message:", hex.EncodeToString(msgBytes))
+		panic("signing message does not match")
 	}
 
 	signature := ed25519.Sign(priv, msgBytes)
-	err = tx.SetSignature("ed25519_signature", client.ED25519Signature{
+	err = tx.SetSignature("ed25519_signature", models.ED25519Signature{
 		PublicKey: hex.EncodeToString(priv.Public().(ed25519.PublicKey)[:]),
 		Signature: hex.EncodeToString(signature),
 	}).Error()
@@ -348,12 +391,12 @@ func faucet(address string, amount string) {
 	}
 
 	txForSimulate := tx.TxForSimulate()
-	_, err = api.SimulateTransaction(txForSimulate)
+	_, err = api.SimulateTransaction(txForSimulate.ToRequest())
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.Transaction)
+	rawTx, err := api.SubmitTransaction(tx.ToRequest())
 	if err != nil {
 		panic(err)
 	}
@@ -370,37 +413,47 @@ func invokeMultiAgent() {
 		panic(err)
 	}
 
-	tx := transactions.Transaction{}
-	err = tx.SetSender(sender).
-		SetPayload("entry_function_payload",
-			[]string{},
-			[]interface{}{
-				hex.EncodeToString([]byte("aptos-is-goooooood!")),
-			}, client.ScriptFunctionPayload{
-				Function: "0x86e4d830197448f975b748f69bd1b3b6d219a07635269a0b4e7f27966771e850::message_multi_agent::set_message",
-			}).
+	tx := models.Transaction{}
+
+	addr, _ := models.HexToAccountAddress("0x86e4d830197448f975b748f69bd1b3b6d219a07635269a0b4e7f27966771e850")
+	err = tx.SetChainID(DevnetChainID).
+		SetSender(sender).
+		SetPayload(models.EntryFunctionPayload{
+			Module: models.Module{
+				Address: addr,
+				Name:    "message_multi_agent",
+			},
+			Function:  "set_message",
+			Arguments: []interface{}{"aptos-is-goooooood!"},
+		},
+		).
 		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
 		SetGasUnitPrice(uint64(1)).
 		SetMaxGasAmount(uint64(100)).
 		SetSequenceNumber(senderInfo.SequenceNumber).
-		SetSecondarySigners([]string{
-			hex.EncodeToString(authKey[:]),
-		}).Error()
+		SetSecondarySigners([]models.AccountAddress{authKey}).
+		Error()
 	if err != nil {
 		panic(err)
 	}
 
-	signingMsg, err := api.EncodeSubmission(tx.Transaction)
+	signingMsg, err := api.EncodeSubmission(tx.UserTransaction.ToRequest())
 	if err != nil {
 		panic(err)
+	}
+
+	msgBytes, err := tx.GetSigningMessage()
+	if err != nil {
+		panic(err)
+	}
+
+	if hex.EncodeToString(msgBytes) != signingMsg.Message[2:] {
+		fmt.Println("signing msg:", signingMsg.Message[2:])
+		fmt.Println("bcs message:", hex.EncodeToString(msgBytes))
+		panic("signing message does not match")
 	}
 
 	err = tx.SetSigningMessage(signingMsg.Message).Error()
-	if err != nil {
-		panic(err)
-	}
-
-	msgBytes, err := hex.DecodeString(signingMsg.Message[2:])
 	if err != nil {
 		panic(err)
 	}
@@ -412,14 +465,14 @@ func invokeMultiAgent() {
 	signature := ed25519.Sign(priv2, msgBytes)
 	senderPriv := ed25519.NewKeyFromSeed(faucetAdminSeed)
 	senderSignature := ed25519.Sign(senderPriv, msgBytes)
-	err = tx.SetSignature("multi_agent_signature", client.MultiAgentSignature{
+	err = tx.SetSignature("multi_agent_signature", models.MultiAgentSignature{
 		Sender: struct {
 			Type string `json:"type"`
-			client.ED25519Signature
-			client.MultiED25519Signature
+			models.ED25519Signature
+			models.MultiED25519Signature
 		}{
 			Type: "ed25519_signature",
-			ED25519Signature: client.ED25519Signature{
+			ED25519Signature: models.ED25519Signature{
 				PublicKey: hex.EncodeToString(senderPriv.Public().(ed25519.PublicKey)),
 				Signature: hex.EncodeToString(senderSignature),
 			},
@@ -429,12 +482,12 @@ func invokeMultiAgent() {
 		},
 		SecondarySigners: []struct {
 			Type string `json:"type"`
-			client.ED25519Signature
-			client.MultiED25519Signature
+			models.ED25519Signature
+			models.MultiED25519Signature
 		}{
 			{
 				Type: "multi_ed25519_signature",
-				MultiED25519Signature: client.MultiED25519Signature{
+				MultiED25519Signature: models.MultiED25519Signature{
 					PublicKeys: []string{hex.EncodeToString(priv1.Public().(ed25519.PublicKey)), hex.EncodeToString(priv2.Public().(ed25519.PublicKey))},
 					Signatures: []string{hex.EncodeToString(signature)},
 					Threshold:  1,
@@ -448,12 +501,12 @@ func invokeMultiAgent() {
 	}
 
 	txForSimulate := tx.TxForSimulate()
-	_, err = api.SimulateTransaction(txForSimulate)
+	_, err = api.SimulateTransaction(txForSimulate.ToRequest())
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.Transaction)
+	rawTx, err := api.SubmitTransaction(tx.ToRequest())
 	if err != nil {
 		panic(err)
 	}
@@ -476,7 +529,7 @@ func invokeScriptPayload() {
 	priv := ed25519.NewKeyFromSeed(key)
 	address := hex.EncodeToString(authKey[:])
 	waitForTxConfirmed()
-	faucet(address, "50")
+	faucet(authKey, 50)
 	waitForTxConfirmed()
 
 	accountInfo, err := api.GetAccount(address)
@@ -484,17 +537,15 @@ func invokeScriptPayload() {
 		panic(err)
 	}
 
-	tx := transactions.Transaction{}
-	err = tx.SetSender(address).
-		SetPayload("script_payload",
-			[]string{},
-			[]interface{}{
-				hex.EncodeToString([]byte("hi script payload~")),
-			}, client.ScriptPayload{
-				Code: client.Code{
-					Bytecode: hex.EncodeToString(fileBytes),
-				},
-			}).
+	tx := models.Transaction{}
+	err = tx.SetChainID(DevnetChainID).
+		SetSender(address).
+		SetPayload(models.ScriptPayload{
+			Code: fileBytes,
+			Arguments: []models.TransactionArgument{
+				models.TxArgU8Vector{Bytes: []byte("hi script payload~")},
+			},
+		}).
 		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
 		SetGasUnitPrice(uint64(1)).
 		SetMaxGasAmount(uint64(50)).
@@ -503,8 +554,14 @@ func invokeScriptPayload() {
 		panic(err)
 	}
 
-	signingMsg, err := api.EncodeSubmission(tx.Transaction)
+	signingMsg, err := api.EncodeSubmission(tx.UserTransaction.ToRequest())
 	if err != nil {
+		panic(err)
+	}
+
+	msgBytes, err := tx.GetSigningMessage()
+	if err != nil {
+		fmt.Printf("%+v\n", tx.UserTransaction)
 		panic(err)
 	}
 
@@ -513,13 +570,14 @@ func invokeScriptPayload() {
 		panic(err)
 	}
 
-	msgBytes, err := hex.DecodeString(signingMsg.Message[2:])
-	if err != nil {
-		panic(err)
+	if hex.EncodeToString(msgBytes) != signingMsg.Message[2:] {
+		fmt.Println("signing msg:", signingMsg.Message[2:])
+		fmt.Println("bcs message:", hex.EncodeToString(msgBytes))
+		panic("signing message does not match")
 	}
 
 	signature := ed25519.Sign(priv, msgBytes)
-	err = tx.SetSignature("ed25519_signature", client.ED25519Signature{
+	err = tx.SetSignature("ed25519_signature", models.ED25519Signature{
 		PublicKey: hex.EncodeToString(priv.Public().(ed25519.PublicKey)[:]),
 		Signature: hex.EncodeToString(signature),
 	}).Error()
@@ -528,12 +586,12 @@ func invokeScriptPayload() {
 	}
 
 	txForSimulate := tx.TxForSimulate()
-	_, err = api.SimulateTransaction(txForSimulate)
+	_, err = api.SimulateTransaction(txForSimulate.ToRequest())
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.Transaction)
+	rawTx, err := api.SubmitTransaction(tx.ToRequest())
 	if err != nil {
 		panic(err)
 	}
@@ -541,7 +599,7 @@ func invokeScriptPayload() {
 	fmt.Println("test script payload tx hash:", rawTx.Hash)
 }
 
-func invokeMultiAgentScriptPayload(scriptName string, typeArgs []string, args []interface{}, faucetAmount ...string) {
+func invokeMultiAgentScriptPayload(scriptName string, typeArgs []models.TypeTag, args []models.TransactionArgument, faucetAmount ...uint64) {
 	fileBytes, err := os.ReadFile(fmt.Sprintf("./examples/transactions/scripts/%s.mv", scriptName))
 	if err != nil {
 		panic(err)
@@ -551,7 +609,7 @@ func invokeMultiAgentScriptPayload(scriptName string, typeArgs []string, args []
 	waitForTxConfirmed()
 
 	if len(faucetAmount) > 0 {
-		faucet(hex.EncodeToString(authKey[:]), faucetAmount[0])
+		faucet(authKey, faucetAmount[0])
 		waitForTxConfirmed()
 	}
 
@@ -561,28 +619,25 @@ func invokeMultiAgentScriptPayload(scriptName string, typeArgs []string, args []
 		panic(err)
 	}
 
-	tx := transactions.Transaction{}
-	err = tx.SetSender(sender).
-		SetPayload("script_payload",
-			typeArgs,
-			args,
-			client.ScriptPayload{
-				Code: client.Code{
-					Bytecode: hex.EncodeToString(fileBytes),
-				},
-			}).
+	tx := models.Transaction{}
+	err = tx.SetChainID(DevnetChainID).
+		SetSender(sender).
+		SetPayload(models.ScriptPayload{
+			Code:          fileBytes,
+			TypeArguments: typeArgs,
+			Arguments:     args,
+		}).
 		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
 		SetGasUnitPrice(uint64(1)).
 		SetMaxGasAmount(uint64(100)).
 		SetSequenceNumber(senderInfo.SequenceNumber).
-		SetSecondarySigners([]string{
-			hex.EncodeToString(authKey[:]),
-		}).Error()
+		SetSecondarySigners([]models.AccountAddress{authKey}).
+		Error()
 	if err != nil {
 		panic(err)
 	}
 
-	signingMsg, err := api.EncodeSubmission(tx.Transaction)
+	signingMsg, err := api.EncodeSubmission(tx.UserTransaction.ToRequest())
 	if err != nil {
 		panic(err)
 	}
@@ -604,14 +659,14 @@ func invokeMultiAgentScriptPayload(scriptName string, typeArgs []string, args []
 	signature := ed25519.Sign(priv2, msgBytes)
 	senderPriv := ed25519.NewKeyFromSeed(faucetAdminSeed)
 	senderSignature := ed25519.Sign(senderPriv, msgBytes)
-	err = tx.SetSignature("multi_agent_signature", client.MultiAgentSignature{
+	err = tx.SetSignature("multi_agent_signature", models.MultiAgentSignature{
 		Sender: struct {
 			Type string `json:"type"`
-			client.ED25519Signature
-			client.MultiED25519Signature
+			models.ED25519Signature
+			models.MultiED25519Signature
 		}{
 			Type: "ed25519_signature",
-			ED25519Signature: client.ED25519Signature{
+			ED25519Signature: models.ED25519Signature{
 				PublicKey: hex.EncodeToString(senderPriv.Public().(ed25519.PublicKey)),
 				Signature: hex.EncodeToString(senderSignature),
 			},
@@ -621,12 +676,12 @@ func invokeMultiAgentScriptPayload(scriptName string, typeArgs []string, args []
 		},
 		SecondarySigners: []struct {
 			Type string `json:"type"`
-			client.ED25519Signature
-			client.MultiED25519Signature
+			models.ED25519Signature
+			models.MultiED25519Signature
 		}{
 			{
 				Type: "multi_ed25519_signature",
-				MultiED25519Signature: client.MultiED25519Signature{
+				MultiED25519Signature: models.MultiED25519Signature{
 					PublicKeys: []string{hex.EncodeToString(priv1.Public().(ed25519.PublicKey)), hex.EncodeToString(priv2.Public().(ed25519.PublicKey))},
 					Signatures: []string{hex.EncodeToString(signature)},
 					Threshold:  1,
@@ -640,12 +695,12 @@ func invokeMultiAgentScriptPayload(scriptName string, typeArgs []string, args []
 	}
 
 	txForSimulate := tx.TxForSimulate()
-	_, err = api.SimulateTransaction(txForSimulate)
+	_, err = api.SimulateTransaction(txForSimulate.ToRequest())
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.Transaction)
+	rawTx, err := api.SubmitTransaction(tx.ToRequest())
 	if err != nil {
 		panic(err)
 	}
@@ -684,15 +739,17 @@ func createWeightAccountTx() (authKey [32]byte, seeds []string) {
 		panic(err)
 	}
 
-	tx := transactions.Transaction{}
-	err = tx.SetSender(faucetAdminAddress).
-		SetPayload("entry_function_payload",
-			[]string{},
-			[]interface{}{
-				hex.EncodeToString(authKey[:]),
-			}, client.ScriptFunctionPayload{
-				Function: "0x1::account::create_account",
-			}).
+	tx := models.Transaction{}
+	err = tx.SetChainID(DevnetChainID).
+		SetSender(faucetAdminAddress).
+		SetPayload(models.EntryFunctionPayload{
+			Module: models.Module{
+				Address: addr0x1,
+				Name:    "account",
+			},
+			Function:  "create_account",
+			Arguments: []interface{}{authKey},
+		}).
 		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
 		SetGasUnitPrice(uint64(1)).
 		SetMaxGasAmount(uint64(1000)).
@@ -701,7 +758,12 @@ func createWeightAccountTx() (authKey [32]byte, seeds []string) {
 		panic(err)
 	}
 
-	signingMsg, err := api.EncodeSubmission(tx.Transaction)
+	signingMsg, err := api.EncodeSubmission(tx.ToRequest())
+	if err != nil {
+		panic(err)
+	}
+
+	msgBytes, err := tx.GetSigningMessage()
 	if err != nil {
 		panic(err)
 	}
@@ -711,13 +773,14 @@ func createWeightAccountTx() (authKey [32]byte, seeds []string) {
 		panic(err)
 	}
 
-	msgBytes, err := hex.DecodeString(signingMsg.Message[2:])
-	if err != nil {
-		panic(err)
+	if hex.EncodeToString(msgBytes) != signingMsg.Message[2:] {
+		fmt.Println("signing msg:", signingMsg.Message[2:])
+		fmt.Println("bcs message:", hex.EncodeToString(msgBytes))
+		panic("signing message does not match")
 	}
 
 	signature := ed25519.Sign(faucetAdminPriv, msgBytes)
-	err = tx.SetSignature("ed25519_signature", client.ED25519Signature{
+	err = tx.SetSignature("ed25519_signature", models.ED25519Signature{
 		PublicKey: hex.EncodeToString(faucetAdminPriv.Public().(ed25519.PublicKey)),
 		Signature: hex.EncodeToString(signature),
 	}).Error()
@@ -726,12 +789,12 @@ func createWeightAccountTx() (authKey [32]byte, seeds []string) {
 	}
 
 	txForSimulate := tx.TxForSimulate()
-	_, err = api.SimulateTransaction(txForSimulate)
+	_, err = api.SimulateTransaction(txForSimulate.ToRequest())
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.Transaction)
+	rawTx, err := api.SubmitTransaction(tx.ToRequest())
 	if err != nil {
 		panic(err)
 	}
@@ -744,7 +807,7 @@ func transferTxWeightedMultiED25519() {
 	authKey, seeds := createWeightAccountTx()
 	address := hex.EncodeToString(authKey[:])
 	waitForTxConfirmed()
-	faucet(address, "100")
+	faucet(authKey, 100)
 	waitForTxConfirmed()
 
 	accountInfo, err := api.GetAccount(address)
@@ -752,16 +815,10 @@ func transferTxWeightedMultiED25519() {
 		panic(err)
 	}
 
-	tx := transactions.Transaction{}
-	err = tx.SetSender(address).
-		SetPayload("entry_function_payload",
-			[]string{"0x1::aptos_coin::AptosCoin"},
-			[]interface{}{
-				faucetAdminAddress,
-				"1",
-			}, client.ScriptFunctionPayload{
-				Function: "0x1::coin::transfer",
-			}).
+	tx := models.Transaction{}
+	err = tx.SetChainID(DevnetChainID).
+		SetSender(address).
+		SetPayload(getTransferPayload(faucetAdminAddr, 1)).
 		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
 		SetGasUnitPrice(uint64(1)).
 		SetMaxGasAmount(uint64(100)).
@@ -770,7 +827,12 @@ func transferTxWeightedMultiED25519() {
 		panic(err)
 	}
 
-	signingMsg, err := api.EncodeSubmission(tx.Transaction)
+	signingMsg, err := api.EncodeSubmission(tx.ToRequest())
+	if err != nil {
+		panic(err)
+	}
+
+	msgBytes, err := tx.GetSigningMessage()
 	if err != nil {
 		panic(err)
 	}
@@ -780,9 +842,10 @@ func transferTxWeightedMultiED25519() {
 		panic(err)
 	}
 
-	msgBytes, err := hex.DecodeString(signingMsg.Message[2:])
-	if err != nil {
-		panic(err)
+	if hex.EncodeToString(msgBytes) != signingMsg.Message[2:] {
+		fmt.Println("signing msg:", signingMsg.Message[2:])
+		fmt.Println("bcs message:", hex.EncodeToString(msgBytes))
+		panic("signing message does not match")
 	}
 
 	key1, _ := hex.DecodeString(seeds[0])
@@ -792,7 +855,7 @@ func transferTxWeightedMultiED25519() {
 	priv2 := ed25519.NewKeyFromSeed(key2)
 	priv3 := ed25519.NewKeyFromSeed(key3)
 	signature := ed25519.Sign(priv3, msgBytes)
-	err = tx.SetSignature("multi_ed25519_signature", client.MultiED25519Signature{
+	err = tx.SetSignature("multi_ed25519_signature", models.MultiED25519Signature{
 		PublicKeys: []string{hex.EncodeToString(priv1.Public().(ed25519.PublicKey)), hex.EncodeToString(priv2.Public().(ed25519.PublicKey)),
 			hex.EncodeToString(priv3.Public().(ed25519.PublicKey)), hex.EncodeToString(priv3.Public().(ed25519.PublicKey))},
 		Signatures: []string{hex.EncodeToString(signature), hex.EncodeToString(signature)},
@@ -804,15 +867,27 @@ func transferTxWeightedMultiED25519() {
 	}
 
 	txForSimulate := tx.TxForSimulate()
-	_, err = api.SimulateTransaction(txForSimulate)
+	_, err = api.SimulateTransaction(txForSimulate.ToRequest())
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.Transaction)
+	rawTx, err := api.SubmitTransaction(tx.ToRequest())
 	if err != nil {
 		panic(err)
 	}
 
 	fmt.Println("transfer tx hash:", rawTx.Hash)
+}
+
+func getTransferPayload(to models.AccountAddress, amount uint64) models.TransactionPayload {
+	return models.EntryFunctionPayload{
+		Module: models.Module{
+			Address: addr0x1,
+			Name:    "coin",
+		},
+		Function:      "transfer",
+		TypeArguments: []models.TypeTag{aptosCoinTypeTag},
+		Arguments:     []interface{}{to, amount},
+	}
 }
