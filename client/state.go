@@ -25,7 +25,7 @@ type TableItemValue struct {
 func (impl StateImpl) GetTableItemByHandleAndKey(handle string, req TableItemReq, opts ...interface{}) (*TableItemValue, error) {
 	var rspJSON TableItemValue
 	err := Request(http.MethodPost,
-		impl.Base.Endpoint()+fmt.Sprintf("/tables/%s/item", handle),
+		impl.Base.Endpoint()+fmt.Sprintf("/v1/tables/%s/item", handle),
 		req, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
 		return nil, err

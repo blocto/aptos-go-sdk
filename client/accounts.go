@@ -25,7 +25,7 @@ type AccountInfo struct {
 func (impl AccountsImpl) GetAccount(address string, opts ...interface{}) (*AccountInfo, error) {
 	var rspJSON AccountInfo
 	err := Request(http.MethodGet,
-		impl.Base.Endpoint()+fmt.Sprintf("/accounts/%s", address),
+		impl.Base.Endpoint()+fmt.Sprintf("/v1/accounts/%s", address),
 		nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ type AccountResource struct {
 func (impl AccountsImpl) GetAccountResources(address string, opts ...interface{}) ([]AccountResource, error) {
 	var rspJSON []AccountResource
 	err := Request(http.MethodGet,
-		impl.Base.Endpoint()+fmt.Sprintf("/accounts/%s/resources", address),
+		impl.Base.Endpoint()+fmt.Sprintf("/v1/accounts/%s/resources", address),
 		nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (impl AccountsImpl) GetAccountResources(address string, opts ...interface{}
 func (impl AccountsImpl) GetResourceByAccountAddressAndResourceType(address, resourceType string, opts ...interface{}) (*AccountResource, error) {
 	var rspJSON AccountResource
 	err := Request(http.MethodGet,
-		impl.Base.Endpoint()+fmt.Sprintf("/accounts/%s/resource/%s", address, resourceType),
+		impl.Base.Endpoint()+fmt.Sprintf("/v1/accounts/%s/resource/%s", address, resourceType),
 		nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
 		return nil, err
@@ -71,7 +71,7 @@ type AccountModule struct {
 func (impl AccountsImpl) GetAccountModules(address string, opts ...interface{}) ([]AccountModule, error) {
 	var rspJSON []AccountModule
 	err := Request(http.MethodGet,
-		impl.Base.Endpoint()+fmt.Sprintf("/accounts/%s/modules", address),
+		impl.Base.Endpoint()+fmt.Sprintf("/v1/accounts/%s/modules", address),
 		nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
 		return nil, err
@@ -83,7 +83,7 @@ func (impl AccountsImpl) GetAccountModules(address string, opts ...interface{}) 
 func (impl AccountsImpl) GetModuleByModuleID(address, moduleID string, opts ...interface{}) (*AccountModule, error) {
 	var rspJSON AccountModule
 	err := Request(http.MethodGet,
-		impl.Base.Endpoint()+fmt.Sprintf("/accounts/%s/module/%s", address, moduleID),
+		impl.Base.Endpoint()+fmt.Sprintf("/v1/accounts/%s/module/%s", address, moduleID),
 		nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
 		return nil, err

@@ -22,7 +22,7 @@ var addr0x1 models.AccountAddress
 var aptosCoinTypeTag models.TypeTag
 
 func init() {
-	api = client.New("https://fullnode.devnet.aptoslabs.com/v1")
+	api = client.New("https://fullnode.devnet.aptoslabs.com")
 	// please set up the account address & seed which has enough balance
 	faucetAdminSeed, _ = hex.DecodeString("784bc4d62c5e96b42addcbee3e5ccc0f7641fa82e9a3462d9a34d06e474274fe")
 	faucetAdminAddress = "86e4d830197448f975b748f69bd1b3b6d219a07635269a0b4e7f27966771e850"
