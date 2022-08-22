@@ -18,7 +18,7 @@ type EventsImpl struct {
 
 func (impl EventsImpl) GetEventsByEventKey(key string, opts ...interface{}) ([]models.Event, error) {
 	var rspJSON []models.Event
-	err := Request(http.MethodGet,
+	err := request(http.MethodGet,
 		impl.Base.Endpoint()+fmt.Sprintf("/v1/events/%s", key),
 		nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
@@ -30,7 +30,7 @@ func (impl EventsImpl) GetEventsByEventKey(key string, opts ...interface{}) ([]m
 
 func (impl EventsImpl) GetEventsByEventHandle(address, handleStruct, fieldName string, start, limit int, opts ...interface{}) ([]models.Event, error) {
 	var rspJSON []models.Event
-	err := Request(http.MethodGet,
+	err := request(http.MethodGet,
 		impl.Base.Endpoint()+fmt.Sprintf("/v1/accounts/%s/events/%s/%s",
 			address, handleStruct, fieldName),
 		nil, &rspJSON, map[string]interface{}{
