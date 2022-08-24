@@ -26,7 +26,7 @@ type LedgerInfo struct {
 
 func (impl GeneralImp) LedgerInformation(opts ...interface{}) (*LedgerInfo, error) {
 	var rspJSON LedgerInfo
-	err := Request(http.MethodGet, impl.Base.Endpoint()+"/v1", nil, &rspJSON, nil, requestOptions(opts...))
+	err := request(http.MethodGet, impl.Base.Endpoint()+"/v1", nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +40,7 @@ type HealthInfo struct {
 
 func (impl GeneralImp) CheckBasicNodeHealth(durationSecs uint32, opts ...interface{}) (*HealthInfo, error) {
 	var rspJSON HealthInfo
-	err := Request(http.MethodGet, impl.Base.Endpoint()+"/v1/-/healthy",
+	err := request(http.MethodGet, impl.Base.Endpoint()+"/v1/-/healthy",
 		nil, &rspJSON, map[string]interface{}{
 			"duration_secs": durationSecs,
 		}, requestOptions(opts...))

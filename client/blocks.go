@@ -25,7 +25,7 @@ type Block struct {
 
 func (impl BlocksImpl) GetBlocksByHeight(height uint64, withTransactions bool, opts ...interface{}) (*Block, error) {
 	var rspJSON Block
-	err := Request(http.MethodGet,
+	err := request(http.MethodGet,
 		impl.Base.Endpoint()+fmt.Sprintf("/v1/blocks/by_height/%d", height),
 		nil, &rspJSON, map[string]interface{}{
 			"with_transactions": withTransactions,
@@ -39,7 +39,7 @@ func (impl BlocksImpl) GetBlocksByHeight(height uint64, withTransactions bool, o
 
 func (impl BlocksImpl) GetBlocksByVersion(version uint64, withTransactions bool, opts ...interface{}) (*Block, error) {
 	var rspJSON Block
-	err := Request(http.MethodGet,
+	err := request(http.MethodGet,
 		impl.Base.Endpoint()+fmt.Sprintf("/v1/blocks/by_version/%d", version),
 		nil, &rspJSON, map[string]interface{}{
 			"with_transactions": withTransactions,

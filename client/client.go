@@ -19,6 +19,10 @@ func init() {
 	}
 }
 
+func WithTimeout(timeout time.Duration) {
+	client.Timeout = timeout
+}
+
 func New(endpoint string) API {
 	impl := &APIImpl{
 		APIBase: APIBase{endpoint: endpoint},
@@ -75,7 +79,7 @@ type ResponseHeader struct {
 	AptosOldestBlockHeight   uint64
 }
 
-func Request(method, endpoint string, reqBody, resp interface{},
+func request(method, endpoint string, reqBody, resp interface{},
 	query map[string]interface{}, respHeader *ResponseHeader) error {
 	reqBytes, err := json.Marshal(reqBody)
 	if err != nil {
@@ -101,9 +105,9 @@ func Request(method, endpoint string, reqBody, resp interface{},
 	if err != nil {
 		return err
 	}
+	defer rsp.Body.Close()
 
 	rspBody, err := ioutil.ReadAll(rsp.Body)
-	defer rsp.Body.Close()
 	if err != nil {
 		return err
 	}
