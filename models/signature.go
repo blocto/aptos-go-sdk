@@ -1,6 +1,6 @@
 package models
 
-type Signature struct {
+type JSONSignature struct {
 	Type string `json:"type"`
 	ED25519Signature
 	MultiED25519Signature
@@ -15,20 +15,18 @@ type ED25519Signature struct {
 type MultiED25519Signature struct {
 	PublicKeys []string `json:"public_keys"`
 	Signatures []string `json:"signatures"`
-	Threshold  int      `json:"threshold"`
+	Threshold  uint8    `json:"threshold"`
 	Bitmap     string   `json:"bitmap"`
 }
 
 type MultiAgentSignature struct {
-	Sender struct {
-		Type string `json:"type"`
-		ED25519Signature
-		MultiED25519Signature
-	} `json:"sender"`
-	SecondarySignerAddresses []string `json:"secondary_signer_addresses"`
-	SecondarySigners         []struct {
-		Type string `json:"type"`
-		ED25519Signature
-		MultiED25519Signature
-	} `json:"secondary_signers"`
+	Sender                   JSONSigner   `json:"sender"`
+	SecondarySignerAddresses []string     `json:"secondary_signer_addresses"`
+	SecondarySigners         []JSONSigner `json:"secondary_signers"`
+}
+
+type JSONSigner struct {
+	Type string `json:"type"`
+	ED25519Signature
+	MultiED25519Signature
 }
