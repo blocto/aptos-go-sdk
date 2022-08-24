@@ -142,25 +142,30 @@ func replaceAuthKey() {
 	}
 
 	signature := ed25519.Sign(priv, msgBytes)
-	err = tx.SetSignature("ed25519_signature", models.ED25519Signature{
-		PublicKey: hex.EncodeToString(priv.Public().(ed25519.PublicKey)[:]),
-		Signature: hex.EncodeToString(signature),
+	err = tx.SetAuthenticator(models.TransactionAuthenticatorEd25519{
+		PublicKey: priv.Public().(ed25519.PublicKey),
+		Signature: signature,
 	}).Error()
 	if err != nil {
 		panic(err)
 	}
 
-	txForSimulate := tx.TxForSimulate()
-	_, err = api.SimulateTransaction(txForSimulate.ToRequest())
+	txReq := tx.ToRequest()
+	_, err = api.SimulateTransaction(txReq.ForSimulate())
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.ToRequest())
+	rawTx, err := api.SubmitTransaction(txReq)
 	if err != nil {
 		panic(err)
 	}
 
+	hash, err := tx.GetHash()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("           computed hash:", hash)
 	fmt.Println("replace auth key tx hash:", rawTx.Hash)
 }
 
@@ -205,26 +210,35 @@ func transferTxMultiED25519() {
 	priv1 := ed25519.NewKeyFromSeed(key1)
 	priv2 := ed25519.NewKeyFromSeed(key2)
 	signature := ed25519.Sign(priv2, msgBytes)
-	err = tx.SetSignature("multi_ed25519_signature", models.MultiED25519Signature{
-		PublicKeys: []string{hex.EncodeToString(priv1.Public().(ed25519.PublicKey)), hex.EncodeToString(priv2.Public().(ed25519.PublicKey))},
-		Signatures: []string{hex.EncodeToString(signature)},
+	err = tx.SetAuthenticator(models.TransactionAuthenticatorMultiEd25519{
+		PublicKeys: []models.PublicKey{
+			priv1.Public().(ed25519.PublicKey),
+			priv2.Public().(ed25519.PublicKey),
+		},
 		Threshold:  1,
-		Bitmap:     "40000000",
+		Signatures: []models.Signature{signature},
+		Bitmap:     [4]byte{0x40, 0, 0, 0},
 	}).Error()
 	if err != nil {
 		panic(err)
 	}
 
-	txForSimulate := tx.TxForSimulate()
-	_, err = api.SimulateTransaction(txForSimulate.ToRequest())
+	txReq := tx.ToRequest()
+	_, err = api.SimulateTransaction(txReq.ForSimulate())
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.ToRequest())
+	rawTx, err := api.SubmitTransaction(txReq)
 	if err != nil {
 		panic(err)
 	}
+
+	hash, err := tx.GetHash()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("   computed hash:", hash)
 
 	fmt.Println("transfer tx hash:", rawTx.Hash)
 }
@@ -291,24 +305,30 @@ func createAccountTx(keyNum int) (authKey [32]byte, seeds []string) {
 	}
 
 	signature := ed25519.Sign(faucetAdminPriv, msgBytes)
-	err = tx.SetSignature("ed25519_signature", models.ED25519Signature{
-		PublicKey: hex.EncodeToString(faucetAdminPriv.Public().(ed25519.PublicKey)),
-		Signature: hex.EncodeToString(signature),
+	err = tx.SetAuthenticator(models.TransactionAuthenticatorEd25519{
+		PublicKey: faucetAdminPriv.Public().(ed25519.PublicKey),
+		Signature: signature,
 	}).Error()
 	if err != nil {
 		panic(err)
 	}
 
-	txForSimulate := tx.TxForSimulate()
-	_, err = api.SimulateTransaction(txForSimulate.ToRequest())
+	txReq := tx.ToRequest()
+	_, err = api.SimulateTransaction(txReq.ForSimulate())
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.ToRequest())
+	rawTx, err := api.SubmitTransaction(txReq)
 	if err != nil {
 		panic(err)
 	}
+
+	hash, err := tx.GetHash()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("         computed hash:", hash)
 
 	fmt.Println("create account tx hash:", rawTx.Hash)
 	return authKey, seeds
@@ -348,24 +368,30 @@ func faucet(address models.AccountAddress, amount uint64) {
 	}
 
 	signature := ed25519.Sign(priv, msgBytes)
-	err = tx.SetSignature("ed25519_signature", models.ED25519Signature{
-		PublicKey: hex.EncodeToString(priv.Public().(ed25519.PublicKey)[:]),
-		Signature: hex.EncodeToString(signature),
+	err = tx.SetAuthenticator(models.TransactionAuthenticatorEd25519{
+		PublicKey: priv.Public().(ed25519.PublicKey),
+		Signature: signature,
 	}).Error()
 	if err != nil {
 		panic(err)
 	}
 
-	txForSimulate := tx.TxForSimulate()
-	_, err = api.SimulateTransaction(txForSimulate.ToRequest())
+	txReq := tx.ToRequest()
+	_, err = api.SimulateTransaction(txReq.ForSimulate())
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.ToRequest())
+	rawTx, err := api.SubmitTransaction(txReq)
 	if err != nil {
 		panic(err)
 	}
+
+	hash, err := tx.GetHash()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(" computed hash:", hash)
 
 	fmt.Println("faucet tx hash:", rawTx.Hash)
 }
@@ -420,34 +446,21 @@ func invokeMultiAgent() {
 	signature := ed25519.Sign(priv2, msgBytes)
 	senderPriv := ed25519.NewKeyFromSeed(faucetAdminSeed)
 	senderSignature := ed25519.Sign(senderPriv, msgBytes)
-	err = tx.SetSignature("multi_agent_signature", models.MultiAgentSignature{
-		Sender: struct {
-			Type string `json:"type"`
-			models.ED25519Signature
-			models.MultiED25519Signature
-		}{
-			Type: "ed25519_signature",
-			ED25519Signature: models.ED25519Signature{
-				PublicKey: hex.EncodeToString(senderPriv.Public().(ed25519.PublicKey)),
-				Signature: hex.EncodeToString(senderSignature),
-			},
+	err = tx.SetAuthenticator(models.TransactionAuthenticatorMultiAgent{
+		Sender: models.AccountAuthenticatorEd25519{
+			PublicKey: senderPriv.Public().(ed25519.PublicKey),
+			Signature: senderSignature,
 		},
-		SecondarySignerAddresses: []string{
-			hex.EncodeToString(authKey[:]),
-		},
-		SecondarySigners: []struct {
-			Type string `json:"type"`
-			models.ED25519Signature
-			models.MultiED25519Signature
-		}{
-			{
-				Type: "multi_ed25519_signature",
-				MultiED25519Signature: models.MultiED25519Signature{
-					PublicKeys: []string{hex.EncodeToString(priv1.Public().(ed25519.PublicKey)), hex.EncodeToString(priv2.Public().(ed25519.PublicKey))},
-					Signatures: []string{hex.EncodeToString(signature)},
-					Threshold:  1,
-					Bitmap:     "40000000",
+		SecondarySignerAddresses: []models.AccountAddress{authKey},
+		SecondarySigners: []models.AccountAuthenticator{
+			models.AccountAuthenticatorMultiEd25519{
+				PublicKeys: []models.PublicKey{
+					priv1.Public().(ed25519.PublicKey),
+					priv2.Public().(ed25519.PublicKey),
 				},
+				Threshold:  1,
+				Signatures: []models.Signature{signature},
+				Bitmap:     [4]byte{0x40, 0, 0, 0},
 			},
 		},
 	}).Error()
@@ -455,17 +468,22 @@ func invokeMultiAgent() {
 		panic(err)
 	}
 
-	txForSimulate := tx.TxForSimulate()
-	_, err = api.SimulateTransaction(txForSimulate.ToRequest())
+	txReq := tx.ToRequest()
+	_, err = api.SimulateTransaction(txReq.ForSimulate())
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.ToRequest())
+	rawTx, err := api.SubmitTransaction(txReq)
 	if err != nil {
 		panic(err)
 	}
 
+	hash, err := tx.GetHash()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("     computed hash:", hash)
 	fmt.Println("multiAgent tx hash:", rawTx.Hash)
 }
 
@@ -521,25 +539,30 @@ func invokeScriptPayload() {
 	}
 
 	signature := ed25519.Sign(priv, msgBytes)
-	err = tx.SetSignature("ed25519_signature", models.ED25519Signature{
-		PublicKey: hex.EncodeToString(priv.Public().(ed25519.PublicKey)[:]),
-		Signature: hex.EncodeToString(signature),
+	err = tx.SetAuthenticator(models.TransactionAuthenticatorEd25519{
+		PublicKey: priv.Public().(ed25519.PublicKey),
+		Signature: signature,
 	}).Error()
 	if err != nil {
 		panic(err)
 	}
 
-	txForSimulate := tx.TxForSimulate()
-	_, err = api.SimulateTransaction(txForSimulate.ToRequest())
+	txReq := tx.ToRequest()
+	_, err = api.SimulateTransaction(txReq.ForSimulate())
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.ToRequest())
+	rawTx, err := api.SubmitTransaction(txReq)
 	if err != nil {
 		panic(err)
 	}
 
+	hash, err := tx.GetHash()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("              computed hash:", hash)
 	fmt.Println("test script payload tx hash:", rawTx.Hash)
 }
 
@@ -598,34 +621,21 @@ func invokeMultiAgentScriptPayload(scriptName string, typeArgs []models.TypeTag,
 	signature := ed25519.Sign(priv2, msgBytes)
 	senderPriv := ed25519.NewKeyFromSeed(faucetAdminSeed)
 	senderSignature := ed25519.Sign(senderPriv, msgBytes)
-	err = tx.SetSignature("multi_agent_signature", models.MultiAgentSignature{
-		Sender: struct {
-			Type string `json:"type"`
-			models.ED25519Signature
-			models.MultiED25519Signature
-		}{
-			Type: "ed25519_signature",
-			ED25519Signature: models.ED25519Signature{
-				PublicKey: hex.EncodeToString(senderPriv.Public().(ed25519.PublicKey)),
-				Signature: hex.EncodeToString(senderSignature),
-			},
+	err = tx.SetAuthenticator(models.TransactionAuthenticatorMultiAgent{
+		Sender: models.AccountAuthenticatorEd25519{
+			PublicKey: senderPriv.Public().(ed25519.PublicKey),
+			Signature: senderSignature,
 		},
-		SecondarySignerAddresses: []string{
-			hex.EncodeToString(authKey[:]),
-		},
-		SecondarySigners: []struct {
-			Type string `json:"type"`
-			models.ED25519Signature
-			models.MultiED25519Signature
-		}{
-			{
-				Type: "multi_ed25519_signature",
-				MultiED25519Signature: models.MultiED25519Signature{
-					PublicKeys: []string{hex.EncodeToString(priv1.Public().(ed25519.PublicKey)), hex.EncodeToString(priv2.Public().(ed25519.PublicKey))},
-					Signatures: []string{hex.EncodeToString(signature)},
-					Threshold:  1,
-					Bitmap:     "40000000",
+		SecondarySignerAddresses: []models.AccountAddress{authKey},
+		SecondarySigners: []models.AccountAuthenticator{
+			models.AccountAuthenticatorMultiEd25519{
+				PublicKeys: []models.PublicKey{
+					priv1.Public().(ed25519.PublicKey),
+					priv2.Public().(ed25519.PublicKey),
 				},
+				Threshold:  1,
+				Signatures: []models.Signature{signature},
+				Bitmap:     [4]byte{0x40, 0, 0, 0},
 			},
 		},
 	}).Error()
@@ -633,17 +643,22 @@ func invokeMultiAgentScriptPayload(scriptName string, typeArgs []models.TypeTag,
 		panic(err)
 	}
 
-	txForSimulate := tx.TxForSimulate()
-	_, err = api.SimulateTransaction(txForSimulate.ToRequest())
+	txReq := tx.ToRequest()
+	_, err = api.SimulateTransaction(txReq.ForSimulate())
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.ToRequest())
+	rawTx, err := api.SubmitTransaction(txReq)
 	if err != nil {
 		panic(err)
 	}
 
+	hash, err := tx.GetHash()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("                         computed hash:", hash)
 	fmt.Println("test multiAgent script payload tx hash:", rawTx.Hash)
 }
 
@@ -708,24 +723,30 @@ func createWeightAccountTx() (authKey [32]byte, seeds []string) {
 	}
 
 	signature := ed25519.Sign(faucetAdminPriv, msgBytes)
-	err = tx.SetSignature("ed25519_signature", models.ED25519Signature{
-		PublicKey: hex.EncodeToString(faucetAdminPriv.Public().(ed25519.PublicKey)),
-		Signature: hex.EncodeToString(signature),
+	err = tx.SetAuthenticator(models.TransactionAuthenticatorEd25519{
+		PublicKey: faucetAdminPriv.Public().(ed25519.PublicKey),
+		Signature: signature,
 	}).Error()
 	if err != nil {
 		panic(err)
 	}
 
-	txForSimulate := tx.TxForSimulate()
-	_, err = api.SimulateTransaction(txForSimulate.ToRequest())
+	txReq := tx.ToRequest()
+	_, err = api.SimulateTransaction(txReq.ForSimulate())
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.ToRequest())
+	rawTx, err := api.SubmitTransaction(txReq)
 	if err != nil {
 		panic(err)
 	}
+
+	hash, err := tx.GetHash()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("         computed hash:", hash)
 
 	fmt.Println("create account tx hash:", rawTx.Hash)
 	return authKey, seeds
@@ -772,28 +793,37 @@ func transferTxWeightedMultiED25519() {
 	priv2 := ed25519.NewKeyFromSeed(key2)
 	priv3 := ed25519.NewKeyFromSeed(key3)
 	signature := ed25519.Sign(priv3, msgBytes)
-	err = tx.SetSignature("multi_ed25519_signature", models.MultiED25519Signature{
-		PublicKeys: []string{hex.EncodeToString(priv1.Public().(ed25519.PublicKey)), hex.EncodeToString(priv2.Public().(ed25519.PublicKey)),
-			hex.EncodeToString(priv3.Public().(ed25519.PublicKey)), hex.EncodeToString(priv3.Public().(ed25519.PublicKey))},
-		Signatures: []string{hex.EncodeToString(signature), hex.EncodeToString(signature)},
+	err = tx.SetAuthenticator(models.TransactionAuthenticatorMultiEd25519{
+		PublicKeys: []models.PublicKey{
+			priv1.Public().(ed25519.PublicKey),
+			priv2.Public().(ed25519.PublicKey),
+			priv3.Public().(ed25519.PublicKey),
+			priv3.Public().(ed25519.PublicKey),
+		},
 		Threshold:  2,
-		Bitmap:     "30000000",
+		Signatures: []models.Signature{signature, signature},
+		Bitmap:     [4]byte{0x30, 0, 0, 0},
 	}).Error()
 	if err != nil {
 		panic(err)
 	}
 
-	txForSimulate := tx.TxForSimulate()
-	_, err = api.SimulateTransaction(txForSimulate.ToRequest())
+	txReq := tx.ToRequest()
+	_, err = api.SimulateTransaction(txReq.ForSimulate())
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.ToRequest())
+	rawTx, err := api.SubmitTransaction(txReq)
 	if err != nil {
 		panic(err)
 	}
 
+	hash, err := tx.GetHash()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("   computed hash:", hash)
 	fmt.Println("transfer tx hash:", rawTx.Hash)
 }
 
