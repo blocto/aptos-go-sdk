@@ -13,6 +13,8 @@ import (
 	"github.com/the729/lcs"
 )
 
+//go:generate mockery --name AptosClient --filename mock_client_test.go --inpackage
+
 var client *http.Client
 
 func init() {
@@ -25,8 +27,9 @@ func WithTimeout(timeout time.Duration) {
 	client.Timeout = timeout
 }
 
-func New(endpoint string) API {
-	impl := &APIImpl{
+// NewAptosClient creates AptosClient for Aptos access APIs
+func NewAptosClient(endpoint string) AptosClient {
+	impl := &AptosClientImpl{
 		APIBase: APIBase{endpoint: endpoint},
 	}
 
@@ -39,7 +42,7 @@ func New(endpoint string) API {
 	return impl
 }
 
-type APIImpl struct {
+type AptosClientImpl struct {
 	APIBase
 
 	GeneralImp
@@ -62,7 +65,7 @@ type Base interface {
 	Endpoint() string
 }
 
-type API interface {
+type AptosClient interface {
 	General
 	Blocks
 	Transactions
