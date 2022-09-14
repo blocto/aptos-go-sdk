@@ -15,7 +15,6 @@ type Transactions interface {
 	GetAccountTransactions(address string, start, limit int, opts ...interface{}) ([]TransactionResp, error)
 	GetTransactionByHash(txHash string, opts ...interface{}) (*TransactionResp, error)
 	GetTransactionByVersion(version uint64, opts ...interface{}) (*TransactionResp, error)
-	EncodeSubmission(tx models.UserTransactionRequest, opts ...interface{}) (*SigningMessage, error)
 	WaitForTransaction(txHash string) error
 }
 
@@ -127,22 +126,6 @@ func (impl TransactionsImpl) GetTransactionByVersion(version uint64, opts ...int
 	err := request(http.MethodGet,
 		impl.Base.Endpoint()+fmt.Sprintf("/v1/transactions/by_version/%d", version),
 		nil, &rspJSON, nil, requestOptions(opts...))
-	if err != nil {
-		return nil, err
-	}
-
-	return &rspJSON, nil
-}
-
-type SigningMessage struct {
-	Message string `json:"message"`
-}
-
-func (impl TransactionsImpl) EncodeSubmission(tx models.UserTransactionRequest, opts ...interface{}) (*SigningMessage, error) {
-	var rspJSON SigningMessage
-	err := request(http.MethodPost,
-		impl.Base.Endpoint()+"/v1/transactions/encode_submission",
-		tx, &rspJSON.Message, nil, requestOptions(opts...))
 	if err != nil {
 		return nil, err
 	}

@@ -38,32 +38,6 @@ func (_m *MockAptosClient) CheckBasicNodeHealth(durationSecs uint32, opts ...int
 	return r0, r1
 }
 
-// EncodeSubmission provides a mock function with given fields: tx, opts
-func (_m *MockAptosClient) EncodeSubmission(tx models.UserTransactionRequest, opts ...interface{}) (*SigningMessage, error) {
-	var _ca []interface{}
-	_ca = append(_ca, tx)
-	_ca = append(_ca, opts...)
-	ret := _m.Called(_ca...)
-
-	var r0 *SigningMessage
-	if rf, ok := ret.Get(0).(func(models.UserTransactionRequest, ...interface{}) *SigningMessage); ok {
-		r0 = rf(tx, opts...)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*SigningMessage)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(models.UserTransactionRequest, ...interface{}) error); ok {
-		r1 = rf(tx, opts...)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // GetAccount provides a mock function with given fields: address, opts
 func (_m *MockAptosClient) GetAccount(address string, opts ...interface{}) (*AccountInfo, error) {
 	var _ca []interface{}
@@ -454,14 +428,14 @@ func (_m *MockAptosClient) LedgerInformation(opts ...interface{}) (*LedgerInfo, 
 }
 
 // SimulateTransaction provides a mock function with given fields: tx, opts
-func (_m *MockAptosClient) SimulateTransaction(tx models.UserTransactionRequest, opts ...interface{}) ([]TransactionResp, error) {
+func (_m *MockAptosClient) SimulateTransaction(tx models.UserTransaction, opts ...interface{}) ([]TransactionResp, error) {
 	var _ca []interface{}
 	_ca = append(_ca, tx)
 	_ca = append(_ca, opts...)
 	ret := _m.Called(_ca...)
 
 	var r0 []TransactionResp
-	if rf, ok := ret.Get(0).(func(models.UserTransactionRequest, ...interface{}) []TransactionResp); ok {
+	if rf, ok := ret.Get(0).(func(models.UserTransaction, ...interface{}) []TransactionResp); ok {
 		r0 = rf(tx, opts...)
 	} else {
 		if ret.Get(0) != nil {
@@ -470,7 +444,7 @@ func (_m *MockAptosClient) SimulateTransaction(tx models.UserTransactionRequest,
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(models.UserTransactionRequest, ...interface{}) error); ok {
+	if rf, ok := ret.Get(1).(func(models.UserTransaction, ...interface{}) error); ok {
 		r1 = rf(tx, opts...)
 	} else {
 		r1 = ret.Error(1)
@@ -480,14 +454,14 @@ func (_m *MockAptosClient) SimulateTransaction(tx models.UserTransactionRequest,
 }
 
 // SubmitTransaction provides a mock function with given fields: tx, opts
-func (_m *MockAptosClient) SubmitTransaction(tx models.UserTransactionRequest, opts ...interface{}) (*TransactionResp, error) {
+func (_m *MockAptosClient) SubmitTransaction(tx models.UserTransaction, opts ...interface{}) (*TransactionResp, error) {
 	var _ca []interface{}
 	_ca = append(_ca, tx)
 	_ca = append(_ca, opts...)
 	ret := _m.Called(_ca...)
 
 	var r0 *TransactionResp
-	if rf, ok := ret.Get(0).(func(models.UserTransactionRequest, ...interface{}) *TransactionResp); ok {
+	if rf, ok := ret.Get(0).(func(models.UserTransaction, ...interface{}) *TransactionResp); ok {
 		r0 = rf(tx, opts...)
 	} else {
 		if ret.Get(0) != nil {
@@ -496,7 +470,7 @@ func (_m *MockAptosClient) SubmitTransaction(tx models.UserTransactionRequest, o
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(models.UserTransactionRequest, ...interface{}) error); ok {
+	if rf, ok := ret.Get(1).(func(models.UserTransaction, ...interface{}) error); ok {
 		r1 = rf(tx, opts...)
 	} else {
 		r1 = ret.Error(1)
