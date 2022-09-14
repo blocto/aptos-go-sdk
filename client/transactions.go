@@ -3,6 +3,7 @@ package client
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/portto/aptos-go-sdk/models"
 )
@@ -14,6 +15,7 @@ type Transactions interface {
 	GetAccountTransactions(address string, start, limit int, opts ...interface{}) ([]TransactionResp, error)
 	GetTransactionByHash(txHash string, opts ...interface{}) (*TransactionResp, error)
 	GetTransactionByVersion(version uint64, opts ...interface{}) (*TransactionResp, error)
+	WaitForTransaction(txHash string) error
 }
 
 type TransactionsImpl struct {
@@ -129,4 +131,27 @@ func (impl TransactionsImpl) GetTransactionByVersion(version uint64, opts ...int
 	}
 
 	return &rspJSON, nil
+}
+
+const (
+	// the maximum retry count of WaitForTransaction
+	maxRetryCount = 10
+)
+
+func (impl TransactionsImpl) WaitForTransaction(txHash string) error {
+	var isPending bool = true
+	var count int
+	for isPending && count < maxRetryCount {
+		tx, err := impl.GetTransactionByHash(txHash)
+		isPending = (err != nil || tx.Type == "pending_transaction")
+		if isPending {
+			time.Sleep(1 * time.Second)
+			count += 1
+		}
+	}
+
+	if isPending {
+		return fmt.Errorf("transaction %s timed out", txHash)
+	}
+	return nil
 }
