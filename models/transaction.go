@@ -320,7 +320,7 @@ func (t Transaction) validateMultiAgent(txAuth TransactionAuthenticatorMultiAgen
 
 var TransactionSalt = sha3.Sum256([]byte("APTOS::Transaction"))
 
-func (t Transaction) GetHash() (string, error) {
+func (t *Transaction) GetHash() (string, error) {
 	if t.hash != "" {
 		return t.hash, nil
 	}
@@ -333,7 +333,8 @@ func (t Transaction) GetHash() (string, error) {
 
 	hash := sha3.Sum256(append(TransactionSalt[:], bcsBytes...))
 
-	return "0x" + hex.EncodeToString(hash[:]), nil
+	t.hash = "0x" + hex.EncodeToString(hash[:])
+	return t.hash, nil
 }
 
 // "0xb5e97db07fa0bd0e5598aa3643a9bc6f6693bddc1a9fec9e674a461eaa00b193"
@@ -342,7 +343,7 @@ var RawTransactionSalt = sha3.Sum256([]byte("APTOS::RawTransaction"))
 // "0x5efa3c4f02f83a0f4b2d69fc95c607cc02825cc4e7be536ef0992df050d9e67c"
 var RawTransactionWithDataSalt = sha3.Sum256([]byte("APTOS::RawTransactionWithData"))
 
-func (t Transaction) GetSigningMessage() ([]byte, error) {
+func (t *Transaction) GetSigningMessage() ([]byte, error) {
 	if t.signingMessage != nil {
 		return t.signingMessage, nil
 	}
@@ -355,19 +356,20 @@ func (t Transaction) GetSigningMessage() ([]byte, error) {
 			return nil, err
 		}
 
-		return append(RawTransactionWithDataSalt[:], bcsBytes...), nil
+		t.signingMessage = append(RawTransactionWithDataSalt[:], bcsBytes...)
 	} else {
 		bcsBytes, err := lcs.Marshal(t.RawTransaction)
 		if err != nil {
 			return nil, err
 		}
 
-		return append(RawTransactionSalt[:], bcsBytes...), nil
+		t.signingMessage = append(RawTransactionSalt[:], bcsBytes...)
 	}
 
+	return t.signingMessage, nil
 }
 
-func (t *Transaction) DecodeFromHex(s string) error {
+func (t *Transaction) DecodeFromSigningMessageHex(s string) error {
 	s = strings.TrimPrefix(s, "0x")
 	s = strings.TrimPrefix(s, "0X")
 	bcsBytes, err := hex.DecodeString(s)
@@ -397,22 +399,6 @@ func (t *Transaction) DecodeFromHex(s string) error {
 	}
 
 	return nil
-}
-
-func (t *Transaction) SetSigningMessage(signingMessage string) *Transaction {
-	if t.hasError() {
-		return t
-	}
-
-	signingMessage = strings.TrimPrefix(signingMessage, "0x")
-	msg, err := hex.DecodeString(signingMessage)
-	if err != nil {
-		t.err = err
-		return t
-	}
-
-	t.signingMessage = msg
-	return t
 }
 
 func (t *Transaction) hasError() bool {

@@ -5,10 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/big"
 	"net/http"
 	"time"
+
+	"github.com/the729/lcs"
 )
 
 var client *http.Client
@@ -81,14 +83,24 @@ type ResponseHeader struct {
 
 func request(method, endpoint string, reqBody, resp interface{},
 	query map[string]interface{}, respHeader *ResponseHeader) error {
-	reqBytes, err := json.Marshal(reqBody)
-	if err != nil {
-		return err
+
+	var reqBytes []byte
+	var err error
+
+	if reqBody != nil {
+		reqBytes, err = lcs.Marshal(reqBody)
+		if err != nil {
+			return err
+		}
 	}
 
 	req, err := http.NewRequest(method, endpoint, bytes.NewBuffer(reqBytes))
 	if err != nil {
 		return err
+	}
+
+	if reqBody != nil {
+		req.Header.Add("Content-Type", "application/x.aptos.signed_transaction+bcs")
 	}
 
 	if req.URL != nil && query != nil {
@@ -99,7 +111,6 @@ func request(method, endpoint string, reqBody, resp interface{},
 		req.URL.RawQuery = q.Encode()
 	}
 
-	req.Header.Add("Content-Type", "application/json")
 	req = req.WithContext(context.Background())
 	rsp, err := client.Do(req)
 	if err != nil {
@@ -107,7 +118,7 @@ func request(method, endpoint string, reqBody, resp interface{},
 	}
 	defer rsp.Body.Close()
 
-	rspBody, err := ioutil.ReadAll(rsp.Body)
+	rspBody, err := io.ReadAll(rsp.Body)
 	if err != nil {
 		return err
 	}
@@ -162,9 +173,9 @@ func request(method, endpoint string, reqBody, resp interface{},
 
 func requestOptions(opts ...interface{}) (rspHeader *ResponseHeader) {
 	for _, opt := range opts {
-		switch opt.(type) {
+		switch opt := opt.(type) {
 		case *ResponseHeader:
-			rspHeader = opt.(*ResponseHeader)
+			rspHeader = opt
 		}
 	}
 	return

@@ -12,13 +12,14 @@ import (
 	"github.com/portto/aptos-go-sdk/models"
 )
 
-const DevnetChainID = 24
+const DevnetChainID = 27
 
 var api client.API
 var faucetAdminSeed []byte
 var faucetAdminAddress string
 var faucetAdminAddr models.AccountAddress
 var addr0x1 models.AccountAddress
+var aptosAccountModule models.Module
 var aptosCoinTypeTag models.TypeTag
 
 func init() {
@@ -28,6 +29,10 @@ func init() {
 	faucetAdminAddress = "86e4d830197448f975b748f69bd1b3b6d219a07635269a0b4e7f27966771e850"
 	faucetAdminAddr, _ = models.HexToAccountAddress(faucetAdminAddress)
 	addr0x1, _ = models.HexToAccountAddress("0x01")
+	aptosAccountModule = models.Module{
+		Address: addr0x1,
+		Name:    "aptos_account",
+	}
 	aptosCoinTypeTag = models.TypeTagStruct{
 		Address: addr0x1,
 		Module:  "aptos_coin",
@@ -113,10 +118,7 @@ func replaceAuthKey() {
 	err = tx.SetChainID(DevnetChainID).
 		SetSender(address).
 		SetPayload(models.EntryFunctionPayload{
-			Module: models.Module{
-				Address: addr0x1,
-				Name:    "account",
-			},
+			Module:   aptosAccountModule,
 			Function: "rotate_authentication_key",
 			Arguments: []interface{}{
 				newAuthKey[:],
@@ -136,11 +138,6 @@ func replaceAuthKey() {
 		panic(err)
 	}
 
-	err = tx.SetSigningMessage(hex.EncodeToString(msgBytes)).Error()
-	if err != nil {
-		panic(err)
-	}
-
 	signature := ed25519.Sign(priv, msgBytes)
 	err = tx.SetAuthenticator(models.TransactionAuthenticatorEd25519{
 		PublicKey: priv.Public().(ed25519.PublicKey),
@@ -150,13 +147,12 @@ func replaceAuthKey() {
 		panic(err)
 	}
 
-	txReq := tx.ToRequest()
-	_, err = api.SimulateTransaction(txReq.ForSimulate())
+	_, err = api.SimulateTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(txReq)
+	rawTx, err := api.SubmitTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
@@ -200,11 +196,6 @@ func transferTxMultiED25519() {
 		panic(err)
 	}
 
-	err = tx.SetSigningMessage(hex.EncodeToString(msgBytes)).Error()
-	if err != nil {
-		panic(err)
-	}
-
 	key1, _ := hex.DecodeString(seeds[0])
 	key2, _ := hex.DecodeString(seeds[1])
 	priv1 := ed25519.NewKeyFromSeed(key1)
@@ -223,13 +214,12 @@ func transferTxMultiED25519() {
 		panic(err)
 	}
 
-	txReq := tx.ToRequest()
-	_, err = api.SimulateTransaction(txReq.ForSimulate())
+	_, err = api.SimulateTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(txReq)
+	rawTx, err := api.SubmitTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
@@ -279,10 +269,7 @@ func createAccountTx(keyNum int) (authKey [32]byte, seeds []string) {
 	err = tx.SetChainID(DevnetChainID).
 		SetSender(faucetAdminAddress).
 		SetPayload(models.EntryFunctionPayload{
-			Module: models.Module{
-				Address: addr0x1,
-				Name:    "account",
-			},
+			Module:    aptosAccountModule,
 			Function:  "create_account",
 			Arguments: []interface{}{authKey},
 		}).
@@ -299,11 +286,6 @@ func createAccountTx(keyNum int) (authKey [32]byte, seeds []string) {
 		panic(err)
 	}
 
-	err = tx.SetSigningMessage(hex.EncodeToString(msgBytes)).Error()
-	if err != nil {
-		panic(err)
-	}
-
 	signature := ed25519.Sign(faucetAdminPriv, msgBytes)
 	err = tx.SetAuthenticator(models.TransactionAuthenticatorEd25519{
 		PublicKey: faucetAdminPriv.Public().(ed25519.PublicKey),
@@ -313,13 +295,12 @@ func createAccountTx(keyNum int) (authKey [32]byte, seeds []string) {
 		panic(err)
 	}
 
-	txReq := tx.ToRequest()
-	_, err = api.SimulateTransaction(txReq.ForSimulate())
+	_, err = api.SimulateTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(txReq)
+	rawTx, err := api.SubmitTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
@@ -328,8 +309,8 @@ func createAccountTx(keyNum int) (authKey [32]byte, seeds []string) {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println("         computed hash:", hash)
 
+	fmt.Println("         computed hash:", hash)
 	fmt.Println("create account tx hash:", rawTx.Hash)
 	return authKey, seeds
 }
@@ -362,11 +343,6 @@ func faucet(address models.AccountAddress, amount uint64) {
 		panic(err)
 	}
 
-	err = tx.SetSigningMessage(hex.EncodeToString(msgBytes)).Error()
-	if err != nil {
-		panic(err)
-	}
-
 	signature := ed25519.Sign(priv, msgBytes)
 	err = tx.SetAuthenticator(models.TransactionAuthenticatorEd25519{
 		PublicKey: priv.Public().(ed25519.PublicKey),
@@ -376,13 +352,12 @@ func faucet(address models.AccountAddress, amount uint64) {
 		panic(err)
 	}
 
-	txReq := tx.ToRequest()
-	_, err = api.SimulateTransaction(txReq.ForSimulate())
+	_, err = api.SimulateTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(txReq)
+	rawTx, err := api.SubmitTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
@@ -434,11 +409,6 @@ func invokeMultiAgent() {
 		panic(err)
 	}
 
-	err = tx.SetSigningMessage(hex.EncodeToString(msgBytes)).Error()
-	if err != nil {
-		panic(err)
-	}
-
 	key1, _ := hex.DecodeString(seeds[0])
 	key2, _ := hex.DecodeString(seeds[1])
 	priv1 := ed25519.NewKeyFromSeed(key1)
@@ -468,13 +438,12 @@ func invokeMultiAgent() {
 		panic(err)
 	}
 
-	txReq := tx.ToRequest()
-	_, err = api.SimulateTransaction(txReq.ForSimulate())
+	_, err = api.SimulateTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(txReq)
+	rawTx, err := api.SubmitTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
@@ -533,11 +502,6 @@ func invokeScriptPayload() {
 		panic(err)
 	}
 
-	err = tx.SetSigningMessage(hex.EncodeToString(msgBytes)).Error()
-	if err != nil {
-		panic(err)
-	}
-
 	signature := ed25519.Sign(priv, msgBytes)
 	err = tx.SetAuthenticator(models.TransactionAuthenticatorEd25519{
 		PublicKey: priv.Public().(ed25519.PublicKey),
@@ -547,13 +511,12 @@ func invokeScriptPayload() {
 		panic(err)
 	}
 
-	txReq := tx.ToRequest()
-	_, err = api.SimulateTransaction(txReq.ForSimulate())
+	_, err = api.SimulateTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(txReq)
+	rawTx, err := api.SubmitTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
@@ -609,11 +572,6 @@ func invokeMultiAgentScriptPayload(scriptName string, typeArgs []models.TypeTag,
 		panic(err)
 	}
 
-	err = tx.SetSigningMessage(hex.EncodeToString(msgBytes)).Error()
-	if err != nil {
-		panic(err)
-	}
-
 	key1, _ := hex.DecodeString(seeds[0])
 	key2, _ := hex.DecodeString(seeds[1])
 	priv1 := ed25519.NewKeyFromSeed(key1)
@@ -643,13 +601,12 @@ func invokeMultiAgentScriptPayload(scriptName string, typeArgs []models.TypeTag,
 		panic(err)
 	}
 
-	txReq := tx.ToRequest()
-	_, err = api.SimulateTransaction(txReq.ForSimulate())
+	_, err = api.SimulateTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(txReq)
+	rawTx, err := api.SubmitTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
@@ -697,10 +654,7 @@ func createWeightAccountTx() (authKey [32]byte, seeds []string) {
 	err = tx.SetChainID(DevnetChainID).
 		SetSender(faucetAdminAddress).
 		SetPayload(models.EntryFunctionPayload{
-			Module: models.Module{
-				Address: addr0x1,
-				Name:    "account",
-			},
+			Module:    aptosAccountModule,
 			Function:  "create_account",
 			Arguments: []interface{}{authKey},
 		}).
@@ -717,11 +671,6 @@ func createWeightAccountTx() (authKey [32]byte, seeds []string) {
 		panic(err)
 	}
 
-	err = tx.SetSigningMessage(hex.EncodeToString(msgBytes)).Error()
-	if err != nil {
-		panic(err)
-	}
-
 	signature := ed25519.Sign(faucetAdminPriv, msgBytes)
 	err = tx.SetAuthenticator(models.TransactionAuthenticatorEd25519{
 		PublicKey: faucetAdminPriv.Public().(ed25519.PublicKey),
@@ -731,13 +680,12 @@ func createWeightAccountTx() (authKey [32]byte, seeds []string) {
 		panic(err)
 	}
 
-	txReq := tx.ToRequest()
-	_, err = api.SimulateTransaction(txReq.ForSimulate())
+	_, err = api.SimulateTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(txReq)
+	rawTx, err := api.SubmitTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
@@ -781,11 +729,6 @@ func transferTxWeightedMultiED25519() {
 		panic(err)
 	}
 
-	err = tx.SetSigningMessage(hex.EncodeToString(msgBytes)).Error()
-	if err != nil {
-		panic(err)
-	}
-
 	key1, _ := hex.DecodeString(seeds[0])
 	key2, _ := hex.DecodeString(seeds[1])
 	key3, _ := hex.DecodeString(seeds[2])
@@ -808,13 +751,12 @@ func transferTxWeightedMultiED25519() {
 		panic(err)
 	}
 
-	txReq := tx.ToRequest()
-	_, err = api.SimulateTransaction(txReq.ForSimulate())
+	_, err = api.SimulateTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(txReq)
+	rawTx, err := api.SubmitTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
