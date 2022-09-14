@@ -9,12 +9,11 @@ import (
 
 type Transactions interface {
 	GetTransactions(start, limit int, opts ...interface{}) ([]TransactionResp, error)
-	SubmitTransaction(tx models.UserTransactionRequest, opts ...interface{}) (*TransactionResp, error)
-	SimulateTransaction(tx models.UserTransactionRequest, opts ...interface{}) ([]TransactionResp, error)
+	SubmitTransaction(tx models.UserTransaction, opts ...interface{}) (*TransactionResp, error)
+	SimulateTransaction(tx models.UserTransaction, opts ...interface{}) ([]TransactionResp, error)
 	GetAccountTransactions(address string, start, limit int, opts ...interface{}) ([]TransactionResp, error)
 	GetTransactionByHash(txHash string, opts ...interface{}) (*TransactionResp, error)
 	GetTransactionByVersion(version uint64, opts ...interface{}) (*TransactionResp, error)
-	EncodeSubmission(tx models.UserTransactionRequest, opts ...interface{}) (*SigningMessage, error)
 }
 
 type TransactionsImpl struct {
@@ -69,7 +68,7 @@ func (impl TransactionsImpl) GetTransactions(start, limit int, opts ...interface
 	return rspJSON, nil
 }
 
-func (impl TransactionsImpl) SubmitTransaction(tx models.UserTransactionRequest, opts ...interface{}) (*TransactionResp, error) {
+func (impl TransactionsImpl) SubmitTransaction(tx models.UserTransaction, opts ...interface{}) (*TransactionResp, error) {
 	var rspJSON TransactionResp
 	err := request(http.MethodPost,
 		impl.Base.Endpoint()+"/v1/transactions",
@@ -81,11 +80,11 @@ func (impl TransactionsImpl) SubmitTransaction(tx models.UserTransactionRequest,
 	return &rspJSON, nil
 }
 
-func (impl TransactionsImpl) SimulateTransaction(tx models.UserTransactionRequest, opts ...interface{}) ([]TransactionResp, error) {
+func (impl TransactionsImpl) SimulateTransaction(tx models.UserTransaction, opts ...interface{}) ([]TransactionResp, error) {
 	var rspJSON []TransactionResp
 	err := request(http.MethodPost,
 		impl.Base.Endpoint()+"/v1/transactions/simulate",
-		tx, &rspJSON, nil, requestOptions(opts...))
+		tx.ForSimulate(), &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
 		return nil, err
 	}
@@ -125,22 +124,6 @@ func (impl TransactionsImpl) GetTransactionByVersion(version uint64, opts ...int
 	err := request(http.MethodGet,
 		impl.Base.Endpoint()+fmt.Sprintf("/v1/transactions/by_version/%d", version),
 		nil, &rspJSON, nil, requestOptions(opts...))
-	if err != nil {
-		return nil, err
-	}
-
-	return &rspJSON, nil
-}
-
-type SigningMessage struct {
-	Message string `json:"message"`
-}
-
-func (impl TransactionsImpl) EncodeSubmission(tx models.UserTransactionRequest, opts ...interface{}) (*SigningMessage, error) {
-	var rspJSON SigningMessage
-	err := request(http.MethodPost,
-		impl.Base.Endpoint()+"/v1/transactions/encode_submission",
-		tx, &rspJSON.Message, nil, requestOptions(opts...))
 	if err != nil {
 		return nil, err
 	}

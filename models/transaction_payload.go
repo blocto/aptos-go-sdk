@@ -1,15 +1,10 @@
 package models
 
 import (
-	"encoding/hex"
-	"fmt"
-
 	"github.com/the729/lcs"
 )
 
-type TransactionPayload interface {
-	ToJSON() JSONPayload
-}
+type TransactionPayload interface{}
 
 var _ = lcs.RegisterEnum(
 	(*TransactionPayload)(nil),
@@ -24,36 +19,10 @@ type ScriptPayload struct {
 	Arguments     []TransactionArgument
 }
 
-func (p ScriptPayload) ToJSON() JSONPayload {
-	json := JSONPayload{
-		Type: "script_payload",
-		Code: Code{
-			Bytecode: "0x" + hex.EncodeToString(p.Code),
-		},
-	}
-
-	json.TypeArguments = make([]string, len(p.TypeArguments))
-	for i, typeArg := range p.TypeArguments {
-		json.TypeArguments[i] = typeArg.ToString()
-	}
-
-	json.Arguments = make([]string, len(p.Arguments))
-	for i, arg := range p.Arguments {
-		json.Arguments[i] = arg.ToString()
-	}
-
-	return json
-}
-
 type ModuleBundlePayload struct {
 	Modules []struct {
 		Code []byte
 	}
-}
-
-func (p ModuleBundlePayload) ToJSON() JSONPayload {
-	// TODO: implement me
-	return JSONPayload{Type: "module_bundle_payload"}
 }
 
 type EntryFunctionPayload struct {
@@ -67,36 +36,6 @@ type EntryFunctionPayload struct {
 type Module struct {
 	Address AccountAddress
 	Name    string
-}
-
-func (p EntryFunctionPayload) ToJSON() JSONPayload {
-	json := JSONPayload{
-		Type:     "entry_function_payload",
-		Function: fmt.Sprintf("%s::%s::%s", p.Address.PrefixZeroTrimmedHex(), p.Name, p.Function),
-	}
-
-	json.TypeArguments = make([]string, len(p.TypeArguments))
-	for i, typeArg := range p.TypeArguments {
-		json.TypeArguments[i] = typeArg.ToString()
-	}
-
-	json.Arguments = make([]string, len(p.Arguments))
-	for i, arg := range p.Arguments {
-		switch arg := arg.(type) {
-		case AccountAddress:
-			json.Arguments[i] = hex.EncodeToString(arg[:])
-		case [32]byte:
-			json.Arguments[i] = hex.EncodeToString(arg[:])
-		case []byte:
-			json.Arguments[i] = hex.EncodeToString(arg)
-		case string:
-			json.Arguments[i] = hex.EncodeToString([]byte(arg))
-		default:
-			json.Arguments[i] = fmt.Sprintf("%v", arg)
-		}
-	}
-
-	return json
 }
 
 type JSONPayload struct {
