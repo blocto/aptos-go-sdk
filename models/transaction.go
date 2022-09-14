@@ -201,6 +201,13 @@ func (t *Transaction) SetAuthenticator(txAuth TransactionAuthenticator) *Transac
 		return t
 	}
 
+	if t.signingMessage == nil {
+		_, err := t.GetSigningMessage()
+		if err != nil {
+			t.err = err
+		}
+	}
+
 	switch txAuth := txAuth.(type) {
 	case TransactionAuthenticatorEd25519:
 		if !ed25519.Verify(txAuth.PublicKey, t.signingMessage, txAuth.Signature) {
