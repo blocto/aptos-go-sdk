@@ -39,9 +39,9 @@ type Module struct {
 }
 
 type JSONPayload struct {
-	Type          string   `json:"type"`
-	TypeArguments []string `json:"type_arguments"`
-	Arguments     []string `json:"arguments"`
+	Type          string        `json:"type"`
+	TypeArguments []string      `json:"type_arguments"`
+	Arguments     []interface{} `json:"arguments"`
 
 	// ScriptPayload
 	Code Code `json:"code,omitempty"`

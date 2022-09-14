@@ -401,6 +401,28 @@ func (t *Transaction) DecodeFromSigningMessageHex(s string) error {
 	return nil
 }
 
+func (t *Transaction) GetFullRawTx() ([]byte, error) {
+	var tx TransactionEnum = t.UserTransaction
+	return lcs.Marshal(&tx)
+}
+
+func (t *Transaction) DecodeFromFullRawTxHex(s string) error {
+	s = strings.TrimPrefix(s, "0x")
+	s = strings.TrimPrefix(s, "0X")
+	bcsBytes, err := hex.DecodeString(s)
+	if err != nil {
+		return fmt.Errorf("hex.DecodeFromHex error: %v", err)
+	}
+
+	var tx TransactionEnum = t.UserTransaction
+	if err := lcs.Unmarshal(bcsBytes, &tx); err != nil {
+		return err
+	}
+
+	t.UserTransaction = tx.(UserTransaction)
+	return nil
+}
+
 func (t *Transaction) hasError() bool {
 	return t.err != nil
 }

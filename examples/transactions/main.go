@@ -5,7 +5,10 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
+
+	"github.com/the729/lcs"
 
 	"github.com/portto/aptos-go-sdk/client"
 	"github.com/portto/aptos-go-sdk/crypto"
@@ -14,16 +17,17 @@ import (
 
 const DevnetChainID = 27
 
-var api client.API
+var aptosClient client.AptosClient
 var faucetAdminSeed []byte
 var faucetAdminAddress string
 var faucetAdminAddr models.AccountAddress
 var addr0x1 models.AccountAddress
 var aptosAccountModule models.Module
+var accountModule models.Module
 var aptosCoinTypeTag models.TypeTag
 
 func init() {
-	api = client.New("https://fullnode.devnet.aptoslabs.com")
+	aptosClient = client.NewAptosClient("https://fullnode.devnet.aptoslabs.com")
 	// please set up the account address & seed which has enough balance
 	faucetAdminSeed, _ = hex.DecodeString("784bc4d62c5e96b42addcbee3e5ccc0f7641fa82e9a3462d9a34d06e474274fe")
 	faucetAdminAddress = "86e4d830197448f975b748f69bd1b3b6d219a07635269a0b4e7f27966771e850"
@@ -32,6 +36,10 @@ func init() {
 	aptosAccountModule = models.Module{
 		Address: addr0x1,
 		Name:    "aptos_account",
+	}
+	accountModule = models.Module{
+		Address: addr0x1,
+		Name:    "account",
 	}
 	aptosCoinTypeTag = models.TypeTagStruct{
 		Address: addr0x1,
@@ -48,6 +56,9 @@ func main() {
 	invokeMultiAgent()
 	fmt.Println("=====")
 	waitForTxConfirmed()
+	invokeMultiAgentRotateKey()
+	fmt.Println("=====")
+	waitForTxConfirmed()
 	invokeScriptPayload()
 	fmt.Println("=====")
 	invokeMultiAgentScriptPayload("multi_agent_set_message", nil,
@@ -57,8 +68,102 @@ func main() {
 	fmt.Println("=====")
 	waitForTxConfirmed()
 	invokeMultiAgentScriptPayload("multi_agent_rotate_authentication_key", nil,
-		[]models.TransactionArgument{
-			models.TxArgU8Vector{Bytes: make([]byte, 32)},
+		nil, func(accountAuthKey [32]byte, accountSeeds []string, tx *models.Transaction) error {
+			originSeed1, err := hex.DecodeString(accountSeeds[0])
+			if err != nil {
+				return err
+			}
+
+			originSeed2, err := hex.DecodeString(accountSeeds[1])
+			if err != nil {
+				return err
+			}
+
+			originPriv1 := ed25519.NewKeyFromSeed(originSeed1)
+			originPriv2 := ed25519.NewKeyFromSeed(originSeed2)
+
+			_, newSeeds := createAccountTx(2)
+			waitForTxConfirmed()
+			if err := tx.SetSequenceNumber(tx.SequenceNumber + 1).Error(); err != nil {
+				return err
+			}
+
+			newSeed1, err := hex.DecodeString(newSeeds[0])
+			if err != nil {
+				return err
+			}
+
+			newSeed2, err := hex.DecodeString(newSeeds[1])
+			if err != nil {
+				return err
+			}
+
+			newPriv1 := ed25519.NewKeyFromSeed(newSeed1)
+			newPriv2 := ed25519.NewKeyFromSeed(newSeed2)
+			newPublicKeys := append(newPriv1.Public().(ed25519.PublicKey), newPriv2.Public().(ed25519.PublicKey)...)
+
+			type SigningMsg struct {
+				TypeOf struct {
+					Address [32]byte
+					Module  string
+					Struct  string
+				}
+				RotationProofChallenge struct {
+					Seq        uint64
+					Address    [32]byte
+					AuthKey    [32]byte
+					PublicKeys []byte
+				}
+			}
+
+			signingMsg, err := lcs.Marshal(SigningMsg{
+				TypeOf: struct {
+					Address [32]byte
+					Module  string
+					Struct  string
+				}{
+					Address: addr0x1,
+					Module:  "account",
+					Struct:  "RotationProofChallenge",
+				},
+				RotationProofChallenge: struct {
+					Seq        uint64
+					Address    [32]byte
+					AuthKey    [32]byte
+					PublicKeys []byte
+				}{
+					Seq:        uint64(0),
+					Address:    accountAuthKey,
+					AuthKey:    accountAuthKey,
+					PublicKeys: append(newPublicKeys, 0x01),
+				},
+			})
+			if err != nil {
+				return err
+			}
+
+			originSig := ed25519.Sign(originPriv1, signingMsg)
+			newSig := ed25519.Sign(newPriv1, signingMsg)
+			return tx.SetPayload(models.ScriptPayload{
+				Code:          tx.Payload.(models.ScriptPayload).Code,
+				TypeArguments: nil,
+				Arguments: []models.TransactionArgument{
+					models.TxArgU8{U8: 1},
+					models.TxArgU8Vector{
+						Bytes: append(append(originPriv1.Public().(ed25519.PublicKey), originPriv2.Public().(ed25519.PublicKey)...), 0x01),
+					},
+					models.TxArgU8{U8: 1},
+					models.TxArgU8Vector{
+						Bytes: append(append(newPriv1.Public().(ed25519.PublicKey), newPriv2.Public().(ed25519.PublicKey)...), 0x01),
+					},
+					models.TxArgU8Vector{
+						Bytes: append(originSig, []byte{0x80, 0x00, 0x00, 0x00}...),
+					},
+					models.TxArgU8Vector{
+						Bytes: append(newSig, []byte{0x80, 0x00, 0x00, 0x00}...),
+					},
+				},
+			}).Error()
 		})
 	fmt.Println("=====")
 	waitForTxConfirmed()
@@ -69,18 +174,18 @@ func main() {
 		[]models.TransactionArgument{
 			models.TxArgAddress{Addr: faucetAdminAddr},
 			models.TxArgU64{U64: 1},
-		}, 1)
+		}, uint64(1))
 	fmt.Println("=====")
 	waitForTxConfirmed()
 	transferTxWeightedMultiED25519()
 	fmt.Println("=====")
 	waitForTxConfirmed()
-	moonCoinAddr, _ := models.HexToAccountAddress("0x86e4d830197448f975b748f69bd1b3b6d219a07635269a0b4e7f27966771e850")
+	usdtCoinAddr, _ := models.HexToAccountAddress("0x498d8926f16eb9ca90cab1b3a26aa6f97a080b3fcbe6e83ae150b7243a00fb68")
 	invokeMultiAgentScriptPayload("multi_agent_coin_register", []models.TypeTag{
 		models.TypeTagStruct{
-			Address: moonCoinAddr,
-			Module:  "moon_coin",
-			Name:    "MoonCoin",
+			Address: usdtCoinAddr,
+			Module:  "devnet_coins",
+			Name:    "DevnetUSDT",
 		},
 	}, []models.TransactionArgument{})
 	fmt.Println("=====")
@@ -99,7 +204,7 @@ func replaceAuthKey() {
 
 	priv := ed25519.NewKeyFromSeed(key)
 	address := hex.EncodeToString(authKey[:])
-	newPub, _, err := ed25519.GenerateKey(nil)
+	newPub, newPriv, err := ed25519.GenerateKey(nil)
 	if err != nil {
 		panic(err)
 	}
@@ -108,20 +213,69 @@ func replaceAuthKey() {
 	faucet(authKey, 50)
 	waitForTxConfirmed()
 
-	accountInfo, err := api.GetAccount(address)
+	accountInfo, err := aptosClient.GetAccount(address)
 	if err != nil {
 		panic(err)
 	}
 
-	newAuthKey := crypto.SingleSignerAuthKey(newPub)
+	type SigningMsg struct {
+		TypeOf struct {
+			Address [32]byte
+			Module  string
+			Struct  string
+		}
+		RotationProofChallenge struct {
+			Seq        uint64
+			Address    [32]byte
+			AuthKey    [32]byte
+			PublicKeys []byte
+		}
+	}
+
+	seq, err := strconv.Atoi(accountInfo.SequenceNumber)
+	if err != nil {
+		panic(err)
+	}
+
+	signingMsg, err := lcs.Marshal(SigningMsg{
+		TypeOf: struct {
+			Address [32]byte
+			Module  string
+			Struct  string
+		}{
+			Address: addr0x1,
+			Module:  "account",
+			Struct:  "RotationProofChallenge",
+		},
+		RotationProofChallenge: struct {
+			Seq        uint64
+			Address    [32]byte
+			AuthKey    [32]byte
+			PublicKeys []byte
+		}{
+			Seq:        uint64(seq),
+			Address:    authKey,
+			AuthKey:    authKey,
+			PublicKeys: newPub[:],
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+
 	tx := models.Transaction{}
 	err = tx.SetChainID(DevnetChainID).
 		SetSender(address).
 		SetPayload(models.EntryFunctionPayload{
-			Module:   aptosAccountModule,
+			Module:   accountModule,
 			Function: "rotate_authentication_key",
 			Arguments: []interface{}{
-				newAuthKey[:],
+				uint8(0),
+				[]byte(priv.Public().(ed25519.PublicKey)),
+				uint8(0),
+				[]byte(newPriv.Public().(ed25519.PublicKey)),
+				ed25519.Sign(priv, signingMsg),
+				ed25519.Sign(newPriv, signingMsg),
 			},
 		},
 		).
@@ -147,12 +301,12 @@ func replaceAuthKey() {
 		panic(err)
 	}
 
-	_, err = api.SimulateTransaction(tx.UserTransaction)
+	_, err = aptosClient.SimulateTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.UserTransaction)
+	rawTx, err := aptosClient.SubmitTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
@@ -172,7 +326,7 @@ func transferTxMultiED25519() {
 	faucet(authKey, 100)
 	waitForTxConfirmed()
 
-	accountInfo, err := api.GetAccount(address)
+	accountInfo, err := aptosClient.GetAccount(address)
 	if err != nil {
 		panic(err)
 	}
@@ -214,12 +368,12 @@ func transferTxMultiED25519() {
 		panic(err)
 	}
 
-	_, err = api.SimulateTransaction(tx.UserTransaction)
+	_, err = aptosClient.SimulateTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.UserTransaction)
+	rawTx, err := aptosClient.SubmitTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
@@ -259,7 +413,7 @@ func createAccountTx(keyNum int) (authKey [32]byte, seeds []string) {
 		panic("keyNum is zero")
 	}
 
-	accountInfo, err := api.GetAccount(faucetAdminAddress)
+	accountInfo, err := aptosClient.GetAccount(faucetAdminAddress)
 	if err != nil {
 		panic(err)
 	}
@@ -295,12 +449,12 @@ func createAccountTx(keyNum int) (authKey [32]byte, seeds []string) {
 		panic(err)
 	}
 
-	_, err = api.SimulateTransaction(tx.UserTransaction)
+	_, err = aptosClient.SimulateTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.UserTransaction)
+	rawTx, err := aptosClient.SubmitTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
@@ -316,7 +470,7 @@ func createAccountTx(keyNum int) (authKey [32]byte, seeds []string) {
 }
 
 func faucet(address models.AccountAddress, amount uint64) {
-	accountInfo, err := api.GetAccount(faucetAdminAddress)
+	accountInfo, err := aptosClient.GetAccount(faucetAdminAddress)
 	if err != nil {
 		panic(err)
 	}
@@ -352,12 +506,12 @@ func faucet(address models.AccountAddress, amount uint64) {
 		panic(err)
 	}
 
-	_, err = api.SimulateTransaction(tx.UserTransaction)
+	_, err = aptosClient.SimulateTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.UserTransaction)
+	rawTx, err := aptosClient.SubmitTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
@@ -375,7 +529,7 @@ func invokeMultiAgent() {
 	authKey, seeds := createAccountTx(2)
 	waitForTxConfirmed()
 	sender := faucetAdminAddress
-	senderInfo, err := api.GetAccount(sender)
+	senderInfo, err := aptosClient.GetAccount(sender)
 	if err != nil {
 		panic(err)
 	}
@@ -438,12 +592,150 @@ func invokeMultiAgent() {
 		panic(err)
 	}
 
-	_, err = api.SimulateTransaction(tx.UserTransaction)
+	_, err = aptosClient.SimulateTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.UserTransaction)
+	rawTx, err := aptosClient.SubmitTransaction(tx.UserTransaction)
+	if err != nil {
+		panic(err)
+	}
+
+	hash, err := tx.GetHash()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("     computed hash:", hash)
+	fmt.Println("multiAgent tx hash:", rawTx.Hash)
+}
+
+func invokeMultiAgentRotateKey() {
+	authKey, seeds := createAccountTx(2)
+	waitForTxConfirmed()
+	faucet(authKey, 150)
+	waitForTxConfirmed()
+	originSeed1, err := hex.DecodeString(seeds[0])
+	if err != nil {
+		panic(err)
+	}
+
+	originSeed2, err := hex.DecodeString(seeds[1])
+	if err != nil {
+		panic(err)
+	}
+
+	originPriv1 := ed25519.NewKeyFromSeed(originSeed1)
+	originPriv2 := ed25519.NewKeyFromSeed(originSeed2)
+
+	_, newSeeds := createAccountTx(2)
+	waitForTxConfirmed()
+	newSeed1, err := hex.DecodeString(newSeeds[0])
+	if err != nil {
+		panic(err)
+	}
+
+	newSeed2, err := hex.DecodeString(newSeeds[1])
+	if err != nil {
+		panic(err)
+	}
+
+	newPriv1 := ed25519.NewKeyFromSeed(newSeed1)
+	newPriv2 := ed25519.NewKeyFromSeed(newSeed2)
+	newPublicKeys := append(newPriv1.Public().(ed25519.PublicKey), newPriv2.Public().(ed25519.PublicKey)...)
+
+	type SigningMsg struct {
+		TypeOf struct {
+			Address [32]byte
+			Module  string
+			Struct  string
+		}
+		RotationProofChallenge struct {
+			Seq        uint64
+			Address    [32]byte
+			AuthKey    [32]byte
+			PublicKeys []byte
+		}
+	}
+
+	signingMsg, err := lcs.Marshal(SigningMsg{
+		TypeOf: struct {
+			Address [32]byte
+			Module  string
+			Struct  string
+		}{
+			Address: addr0x1,
+			Module:  "account",
+			Struct:  "RotationProofChallenge",
+		},
+		RotationProofChallenge: struct {
+			Seq        uint64
+			Address    [32]byte
+			AuthKey    [32]byte
+			PublicKeys []byte
+		}{
+			Seq:        uint64(0),
+			Address:    authKey,
+			AuthKey:    authKey,
+			PublicKeys: append(newPublicKeys, 0x01),
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	originSig := ed25519.Sign(originPriv1, signingMsg)
+	newSig := ed25519.Sign(newPriv1, signingMsg)
+	tx := models.Transaction{}
+	err = tx.SetChainID(DevnetChainID).
+		SetSender(hex.EncodeToString(authKey[:])).
+		SetPayload(models.EntryFunctionPayload{
+			Module:   accountModule,
+			Function: "rotate_authentication_key",
+			Arguments: []interface{}{
+				uint8(1),
+				[]byte(append(append(originPriv1.Public().(ed25519.PublicKey), originPriv2.Public().(ed25519.PublicKey)...), 0x01)),
+				uint8(1),
+				[]byte(append(append(newPriv1.Public().(ed25519.PublicKey), newPriv2.Public().(ed25519.PublicKey)...), 0x01)),
+				append(originSig, []byte{0x80, 0x00, 0x00, 0x00}...),
+				append(newSig, []byte{0x80, 0x00, 0x00, 0x00}...),
+			},
+		},
+		).
+		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
+		SetGasUnitPrice(uint64(1)).
+		SetMaxGasAmount(uint64(100)).
+		SetSequenceNumber(uint64(0)).
+		Error()
+	if err != nil {
+		panic(err)
+	}
+
+	msgBytes, err := tx.GetSigningMessage()
+	if err != nil {
+		panic(err)
+	}
+
+	signature := ed25519.Sign(originPriv2, msgBytes)
+	err = tx.SetAuthenticator(models.TransactionAuthenticatorMultiEd25519{
+		PublicKeys: []models.PublicKey{
+			originPriv1.Public().(ed25519.PublicKey),
+			originPriv2.Public().(ed25519.PublicKey),
+		},
+		Threshold:  1,
+		Signatures: []models.Signature{signature},
+		Bitmap:     [4]byte{0x40, 0, 0, 0},
+	}).Error()
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = aptosClient.SimulateTransaction(tx.UserTransaction)
+	if err != nil {
+		panic(err)
+	}
+
+	rawTx, err := aptosClient.SubmitTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
@@ -474,7 +766,7 @@ func invokeScriptPayload() {
 	faucet(authKey, 50)
 	waitForTxConfirmed()
 
-	accountInfo, err := api.GetAccount(address)
+	accountInfo, err := aptosClient.GetAccount(address)
 	if err != nil {
 		panic(err)
 	}
@@ -511,12 +803,12 @@ func invokeScriptPayload() {
 		panic(err)
 	}
 
-	_, err = api.SimulateTransaction(tx.UserTransaction)
+	_, err = aptosClient.SimulateTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.UserTransaction)
+	rawTx, err := aptosClient.SubmitTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
@@ -529,7 +821,7 @@ func invokeScriptPayload() {
 	fmt.Println("test script payload tx hash:", rawTx.Hash)
 }
 
-func invokeMultiAgentScriptPayload(scriptName string, typeArgs []models.TypeTag, args []models.TransactionArgument, faucetAmount ...uint64) {
+func invokeMultiAgentScriptPayload(scriptName string, typeArgs []models.TypeTag, args []models.TransactionArgument, opts ...interface{}) {
 	fileBytes, err := os.ReadFile(fmt.Sprintf("./examples/transactions/scripts/%s.mv", scriptName))
 	if err != nil {
 		panic(err)
@@ -538,13 +830,19 @@ func invokeMultiAgentScriptPayload(scriptName string, typeArgs []models.TypeTag,
 	authKey, seeds := createAccountTx(2)
 	waitForTxConfirmed()
 
-	if len(faucetAmount) > 0 {
-		faucet(authKey, faucetAmount[0])
-		waitForTxConfirmed()
+	var cb func(accountAuthKey [32]byte, accountSeeds []string, tx *models.Transaction) error
+	for _, opt := range opts {
+		switch value := opt.(type) {
+		case uint64:
+			faucet(authKey, value)
+			waitForTxConfirmed()
+		case func(accountAuthKey [32]byte, accountSeeds []string, tx *models.Transaction) error:
+			cb = value
+		}
 	}
 
 	sender := faucetAdminAddress
-	senderInfo, err := api.GetAccount(sender)
+	senderInfo, err := aptosClient.GetAccount(sender)
 	if err != nil {
 		panic(err)
 	}
@@ -565,6 +863,12 @@ func invokeMultiAgentScriptPayload(scriptName string, typeArgs []models.TypeTag,
 		Error()
 	if err != nil {
 		panic(err)
+	}
+
+	if cb != nil {
+		if err := cb(authKey, seeds, &tx); err != nil {
+			panic(err)
+		}
 	}
 
 	msgBytes, err := tx.GetSigningMessage()
@@ -601,12 +905,12 @@ func invokeMultiAgentScriptPayload(scriptName string, typeArgs []models.TypeTag,
 		panic(err)
 	}
 
-	_, err = api.SimulateTransaction(tx.UserTransaction)
+	_, err = aptosClient.SimulateTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.UserTransaction)
+	rawTx, err := aptosClient.SubmitTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
@@ -645,7 +949,7 @@ func createWeightAccountTx() (authKey [32]byte, seeds []string) {
 	publicKeys = append(publicKeys, key3Pub)
 
 	authKey = crypto.MultiSignerAuthKey(2, publicKeys...)
-	accountInfo, err := api.GetAccount(faucetAdminAddress)
+	accountInfo, err := aptosClient.GetAccount(faucetAdminAddress)
 	if err != nil {
 		panic(err)
 	}
@@ -680,12 +984,12 @@ func createWeightAccountTx() (authKey [32]byte, seeds []string) {
 		panic(err)
 	}
 
-	_, err = api.SimulateTransaction(tx.UserTransaction)
+	_, err = aptosClient.SimulateTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.UserTransaction)
+	rawTx, err := aptosClient.SubmitTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
@@ -707,7 +1011,7 @@ func transferTxWeightedMultiED25519() {
 	faucet(authKey, 100)
 	waitForTxConfirmed()
 
-	accountInfo, err := api.GetAccount(address)
+	accountInfo, err := aptosClient.GetAccount(address)
 	if err != nil {
 		panic(err)
 	}
@@ -751,12 +1055,12 @@ func transferTxWeightedMultiED25519() {
 		panic(err)
 	}
 
-	_, err = api.SimulateTransaction(tx.UserTransaction)
+	_, err = aptosClient.SimulateTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := api.SubmitTransaction(tx.UserTransaction)
+	rawTx, err := aptosClient.SubmitTransaction(tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}

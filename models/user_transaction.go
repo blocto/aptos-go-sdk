@@ -2,7 +2,6 @@ package models
 
 import (
 	"crypto/ed25519"
-
 	"github.com/the729/lcs"
 )
 
