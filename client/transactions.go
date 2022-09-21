@@ -11,10 +11,11 @@ import (
 type Transactions interface {
 	GetTransactions(start, limit int, opts ...interface{}) ([]TransactionResp, error)
 	SubmitTransaction(tx models.UserTransaction, opts ...interface{}) (*TransactionResp, error)
-	SimulateTransaction(tx models.UserTransaction, opts ...interface{}) ([]TransactionResp, error)
+	SimulateTransaction(tx models.UserTransaction, estimateGasUnitPrice, estimateMaxGasAmount bool, opts ...interface{}) ([]TransactionResp, error)
 	GetAccountTransactions(address string, start, limit int, opts ...interface{}) ([]TransactionResp, error)
 	GetTransactionByHash(txHash string, opts ...interface{}) (*TransactionResp, error)
 	GetTransactionByVersion(version uint64, opts ...interface{}) (*TransactionResp, error)
+	EstimateGasPrice(opts ...interface{}) (uint64, error)
 	WaitForTransaction(txHash string) error
 }
 
@@ -82,11 +83,15 @@ func (impl TransactionsImpl) SubmitTransaction(tx models.UserTransaction, opts .
 	return &rspJSON, nil
 }
 
-func (impl TransactionsImpl) SimulateTransaction(tx models.UserTransaction, opts ...interface{}) ([]TransactionResp, error) {
+func (impl TransactionsImpl) SimulateTransaction(tx models.UserTransaction,
+	estimateGasUnitPrice, estimateMaxGasAmount bool, opts ...interface{}) ([]TransactionResp, error) {
 	var rspJSON []TransactionResp
 	err := request(http.MethodPost,
 		impl.Base.Endpoint()+"/v1/transactions/simulate",
-		tx.ForSimulate(), &rspJSON, nil, requestOptions(opts...))
+		tx.ForSimulate(), &rspJSON, map[string]interface{}{
+			"estimate_gas_unit_price": estimateGasUnitPrice,
+			"estimate_max_gas_amount": estimateMaxGasAmount,
+		}, requestOptions(opts...))
 	if err != nil {
 		return nil, err
 	}
@@ -131,6 +136,21 @@ func (impl TransactionsImpl) GetTransactionByVersion(version uint64, opts ...int
 	}
 
 	return &rspJSON, nil
+}
+
+func (impl TransactionsImpl) EstimateGasPrice(opts ...interface{}) (uint64, error) {
+	type response struct {
+		GasEstimate uint64 `json:"gas_estimate"`
+	}
+	var rspJSON response
+	err := request(http.MethodGet,
+		impl.Base.Endpoint()+"/v1/estimate_gas_price",
+		nil, &rspJSON, nil, requestOptions(opts...))
+	if err != nil {
+		return 0, err
+	}
+
+	return rspJSON.GasEstimate, nil
 }
 
 const (
