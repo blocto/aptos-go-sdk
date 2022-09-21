@@ -250,6 +250,39 @@ func (t *Transaction) SetAuthenticator(txAuth TransactionAuthenticator) *Transac
 	return t
 }
 
+func (t *Transaction) SetAuthenticatorForSimulate(txAuth TransactionAuthenticator) *Transaction {
+	if t.hasError() {
+		return t
+	}
+
+	switch txAuth := txAuth.(type) {
+	case TransactionAuthenticatorEd25519:
+		t.Authenticator = txAuth
+	case TransactionAuthenticatorMultiEd25519:
+		t.Authenticator = txAuth.SetBytes()
+	case TransactionAuthenticatorMultiAgent:
+		switch sender := txAuth.Sender.(type) {
+		case AccountAuthenticatorEd25519:
+		case AccountAuthenticatorMultiEd25519:
+			txAuth.Sender = sender.SetBytes()
+		}
+
+		for i, signer := range txAuth.SecondarySigners {
+			switch signer := signer.(type) {
+			case AccountAuthenticatorEd25519:
+			case AccountAuthenticatorMultiEd25519:
+				txAuth.SecondarySigners[i] = signer.SetBytes()
+			}
+		}
+		t.Authenticator = txAuth
+	default:
+		t.err = fmt.Errorf("unexpected signature type %T", txAuth)
+		return t
+	}
+
+	return t
+}
+
 func (t *Transaction) SetSecondarySigners(secondarySigners []AccountAddress) *Transaction {
 	if t.hasError() {
 		return t
@@ -351,10 +384,6 @@ var RawTransactionSalt = sha3.Sum256([]byte("APTOS::RawTransaction"))
 var RawTransactionWithDataSalt = sha3.Sum256([]byte("APTOS::RawTransactionWithData"))
 
 func (t *Transaction) GetSigningMessage() ([]byte, error) {
-	if t.signingMessage != nil {
-		return t.signingMessage, nil
-	}
-
 	// MultiAgentRawTransaction
 	if len(t.SecondarySigners) > 0 {
 		rawTransactionWithData := t.GetRawTransactionWithData()
