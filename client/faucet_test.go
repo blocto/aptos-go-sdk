@@ -18,7 +18,7 @@ func TestFund(t *testing.T) {
 			assert.Equal(t, len(resp), n)
 		}))
 		mockClient := MockAptosClient{}
-		mockClient.On("WaitForTransaction", mockTxHash).Return(nil).Once()
+		mockClient.On("WaitForTransaction", mockCTX, mockTxHash).Return(nil).Once()
 		fc := NewFaucetClient(srv.URL, &mockClient)
 		err := fc.FundAccount(mockCTX, mockAddress, 1)
 		assert.NoError(t, err)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/ed25519"
 	"encoding/hex"
 	"fmt"
@@ -25,6 +26,7 @@ var addr0x1 models.AccountAddress
 var aptosAccountModule models.Module
 var accountModule models.Module
 var aptosCoinTypeTag models.TypeTag
+var ctx = context.Background()
 
 func init() {
 	aptosClient = client.NewAptosClient("https://fullnode.devnet.aptoslabs.com")
@@ -213,7 +215,7 @@ func replaceAuthKey() {
 	faucet(authKey, 50)
 	waitForTxConfirmed()
 
-	accountInfo, err := aptosClient.GetAccount(address)
+	accountInfo, err := aptosClient.GetAccount(ctx, address)
 	if err != nil {
 		panic(err)
 	}
@@ -301,12 +303,12 @@ func replaceAuthKey() {
 		panic(err)
 	}
 
-	_, err = aptosClient.SimulateTransaction(tx.UserTransaction, false, false)
+	_, err = aptosClient.SimulateTransaction(ctx, tx.UserTransaction, false, false)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := aptosClient.SubmitTransaction(tx.UserTransaction)
+	rawTx, err := aptosClient.SubmitTransaction(ctx, tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
@@ -326,7 +328,7 @@ func transferTxMultiED25519() {
 	faucet(authKey, 100)
 	waitForTxConfirmed()
 
-	accountInfo, err := aptosClient.GetAccount(address)
+	accountInfo, err := aptosClient.GetAccount(ctx, address)
 	if err != nil {
 		panic(err)
 	}
@@ -368,12 +370,12 @@ func transferTxMultiED25519() {
 		panic(err)
 	}
 
-	_, err = aptosClient.SimulateTransaction(tx.UserTransaction, false, false)
+	_, err = aptosClient.SimulateTransaction(ctx, tx.UserTransaction, false, false)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := aptosClient.SubmitTransaction(tx.UserTransaction)
+	rawTx, err := aptosClient.SubmitTransaction(ctx, tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
@@ -413,7 +415,7 @@ func createAccountTx(keyNum int) (authKey [32]byte, seeds []string) {
 		panic("keyNum is zero")
 	}
 
-	accountInfo, err := aptosClient.GetAccount(faucetAdminAddress)
+	accountInfo, err := aptosClient.GetAccount(ctx, faucetAdminAddress)
 	if err != nil {
 		panic(err)
 	}
@@ -449,12 +451,12 @@ func createAccountTx(keyNum int) (authKey [32]byte, seeds []string) {
 		panic(err)
 	}
 
-	_, err = aptosClient.SimulateTransaction(tx.UserTransaction, false, false)
+	_, err = aptosClient.SimulateTransaction(ctx, tx.UserTransaction, false, false)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := aptosClient.SubmitTransaction(tx.UserTransaction)
+	rawTx, err := aptosClient.SubmitTransaction(ctx, tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
@@ -470,7 +472,7 @@ func createAccountTx(keyNum int) (authKey [32]byte, seeds []string) {
 }
 
 func faucet(address models.AccountAddress, amount uint64) {
-	accountInfo, err := aptosClient.GetAccount(faucetAdminAddress)
+	accountInfo, err := aptosClient.GetAccount(ctx, faucetAdminAddress)
 	if err != nil {
 		panic(err)
 	}
@@ -506,12 +508,12 @@ func faucet(address models.AccountAddress, amount uint64) {
 		panic(err)
 	}
 
-	_, err = aptosClient.SimulateTransaction(tx.UserTransaction, false, false)
+	_, err = aptosClient.SimulateTransaction(ctx, tx.UserTransaction, false, false)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := aptosClient.SubmitTransaction(tx.UserTransaction)
+	rawTx, err := aptosClient.SubmitTransaction(ctx, tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
@@ -529,7 +531,7 @@ func invokeMultiAgent() {
 	authKey, seeds := createAccountTx(2)
 	waitForTxConfirmed()
 	sender := faucetAdminAddress
-	senderInfo, err := aptosClient.GetAccount(sender)
+	senderInfo, err := aptosClient.GetAccount(ctx, sender)
 	if err != nil {
 		panic(err)
 	}
@@ -592,12 +594,12 @@ func invokeMultiAgent() {
 		panic(err)
 	}
 
-	_, err = aptosClient.SimulateTransaction(tx.UserTransaction, false, false)
+	_, err = aptosClient.SimulateTransaction(ctx, tx.UserTransaction, false, false)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := aptosClient.SubmitTransaction(tx.UserTransaction)
+	rawTx, err := aptosClient.SubmitTransaction(ctx, tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
@@ -730,12 +732,12 @@ func invokeMultiAgentRotateKey() {
 		panic(err)
 	}
 
-	_, err = aptosClient.SimulateTransaction(tx.UserTransaction, false, false)
+	_, err = aptosClient.SimulateTransaction(ctx, tx.UserTransaction, false, false)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := aptosClient.SubmitTransaction(tx.UserTransaction)
+	rawTx, err := aptosClient.SubmitTransaction(ctx, tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
@@ -766,7 +768,7 @@ func invokeScriptPayload() {
 	faucet(authKey, 50)
 	waitForTxConfirmed()
 
-	accountInfo, err := aptosClient.GetAccount(address)
+	accountInfo, err := aptosClient.GetAccount(ctx, address)
 	if err != nil {
 		panic(err)
 	}
@@ -803,12 +805,12 @@ func invokeScriptPayload() {
 		panic(err)
 	}
 
-	_, err = aptosClient.SimulateTransaction(tx.UserTransaction, false, false)
+	_, err = aptosClient.SimulateTransaction(ctx, tx.UserTransaction, false, false)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := aptosClient.SubmitTransaction(tx.UserTransaction)
+	rawTx, err := aptosClient.SubmitTransaction(ctx, tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
@@ -842,7 +844,7 @@ func invokeMultiAgentScriptPayload(scriptName string, typeArgs []models.TypeTag,
 	}
 
 	sender := faucetAdminAddress
-	senderInfo, err := aptosClient.GetAccount(sender)
+	senderInfo, err := aptosClient.GetAccount(ctx, sender)
 	if err != nil {
 		panic(err)
 	}
@@ -905,12 +907,12 @@ func invokeMultiAgentScriptPayload(scriptName string, typeArgs []models.TypeTag,
 		panic(err)
 	}
 
-	_, err = aptosClient.SimulateTransaction(tx.UserTransaction, false, false)
+	_, err = aptosClient.SimulateTransaction(ctx, tx.UserTransaction, false, false)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := aptosClient.SubmitTransaction(tx.UserTransaction)
+	rawTx, err := aptosClient.SubmitTransaction(ctx, tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
@@ -949,7 +951,7 @@ func createWeightAccountTx() (authKey [32]byte, seeds []string) {
 	publicKeys = append(publicKeys, key3Pub)
 
 	authKey = crypto.MultiSignerAuthKey(2, publicKeys...)
-	accountInfo, err := aptosClient.GetAccount(faucetAdminAddress)
+	accountInfo, err := aptosClient.GetAccount(ctx, faucetAdminAddress)
 	if err != nil {
 		panic(err)
 	}
@@ -984,12 +986,12 @@ func createWeightAccountTx() (authKey [32]byte, seeds []string) {
 		panic(err)
 	}
 
-	_, err = aptosClient.SimulateTransaction(tx.UserTransaction, false, false)
+	_, err = aptosClient.SimulateTransaction(ctx, tx.UserTransaction, false, false)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := aptosClient.SubmitTransaction(tx.UserTransaction)
+	rawTx, err := aptosClient.SubmitTransaction(ctx, tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}
@@ -1011,7 +1013,7 @@ func transferTxWeightedMultiED25519() {
 	faucet(authKey, 100)
 	waitForTxConfirmed()
 
-	accountInfo, err := aptosClient.GetAccount(address)
+	accountInfo, err := aptosClient.GetAccount(ctx, address)
 	if err != nil {
 		panic(err)
 	}
@@ -1055,12 +1057,12 @@ func transferTxWeightedMultiED25519() {
 		panic(err)
 	}
 
-	_, err = aptosClient.SimulateTransaction(tx.UserTransaction, false, false)
+	_, err = aptosClient.SimulateTransaction(ctx, tx.UserTransaction, false, false)
 	if err != nil {
 		panic(err)
 	}
 
-	rawTx, err := aptosClient.SubmitTransaction(tx.UserTransaction)
+	rawTx, err := aptosClient.SubmitTransaction(ctx, tx.UserTransaction)
 	if err != nil {
 		panic(err)
 	}

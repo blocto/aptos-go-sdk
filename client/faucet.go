@@ -25,7 +25,7 @@ type FaucetClient struct {
 // FundAccount creates an account if it doesn't exist and mints the given amount of coins into account
 func (im *FaucetClient) FundAccount(ctx context.Context, address string, amount uint64) error {
 	var txHashes []string
-	err := request(http.MethodPost,
+	err := request(ctx, http.MethodPost,
 		im.APIBase.Endpoint()+"/mint",
 		nil, &txHashes, map[string]interface{}{
 			"address": address,
@@ -40,7 +40,7 @@ func (im *FaucetClient) FundAccount(ctx context.Context, address string, amount 
 	}
 
 	for _, txHash := range txHashes {
-		if err := im.aptosClient.WaitForTransaction(txHash); err != nil {
+		if err := im.aptosClient.WaitForTransaction(ctx, txHash); err != nil {
 			return err
 		}
 	}

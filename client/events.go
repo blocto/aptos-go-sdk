@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -8,17 +9,17 @@ import (
 )
 
 type Events interface {
-	GetEventsByEventKey(key string, opts ...interface{}) ([]models.Event, error)
-	GetEventsByEventHandle(address, handleStruct, fieldName string, start, limit int, opts ...interface{}) ([]models.Event, error)
+	GetEventsByEventKey(ctx context.Context, key string, opts ...interface{}) ([]models.Event, error)
+	GetEventsByEventHandle(ctx context.Context, address, handleStruct, fieldName string, start, limit int, opts ...interface{}) ([]models.Event, error)
 }
 
 type EventsImpl struct {
 	Base
 }
 
-func (impl EventsImpl) GetEventsByEventKey(key string, opts ...interface{}) ([]models.Event, error) {
+func (impl EventsImpl) GetEventsByEventKey(ctx context.Context, key string, opts ...interface{}) ([]models.Event, error) {
 	var rspJSON []models.Event
-	err := request(http.MethodGet,
+	err := request(ctx, http.MethodGet,
 		impl.Base.Endpoint()+fmt.Sprintf("/v1/events/%s", key),
 		nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
@@ -28,9 +29,9 @@ func (impl EventsImpl) GetEventsByEventKey(key string, opts ...interface{}) ([]m
 	return rspJSON, nil
 }
 
-func (impl EventsImpl) GetEventsByEventHandle(address, handleStruct, fieldName string, start, limit int, opts ...interface{}) ([]models.Event, error) {
+func (impl EventsImpl) GetEventsByEventHandle(ctx context.Context, address, handleStruct, fieldName string, start, limit int, opts ...interface{}) ([]models.Event, error) {
 	var rspJSON []models.Event
-	err := request(http.MethodGet,
+	err := request(ctx, http.MethodGet,
 		impl.Base.Endpoint()+fmt.Sprintf("/v1/accounts/%s/events/%s/%s",
 			address, handleStruct, fieldName),
 		nil, &rspJSON, map[string]interface{}{
