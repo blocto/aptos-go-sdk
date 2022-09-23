@@ -84,7 +84,7 @@ type ResponseHeader struct {
 	AptosOldestBlockHeight   uint64
 }
 
-func request(method, endpoint string, reqBody, resp interface{},
+func request(ctx context.Context, method, endpoint string, reqBody, resp interface{},
 	query map[string]interface{}, respHeader *ResponseHeader) error {
 
 	var reqBytes []byte
@@ -97,7 +97,7 @@ func request(method, endpoint string, reqBody, resp interface{},
 		}
 	}
 
-	req, err := http.NewRequest(method, endpoint, bytes.NewBuffer(reqBytes))
+	req, err := http.NewRequestWithContext(ctx, method, endpoint, bytes.NewBuffer(reqBytes))
 	if err != nil {
 		return err
 	}
@@ -114,7 +114,6 @@ func request(method, endpoint string, reqBody, resp interface{},
 		req.URL.RawQuery = q.Encode()
 	}
 
-	req = req.WithContext(context.Background())
 	rsp, err := client.Do(req)
 	if err != nil {
 		return err

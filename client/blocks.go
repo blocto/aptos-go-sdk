@@ -1,13 +1,14 @@
 package client
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 )
 
 type Blocks interface {
-	GetBlocksByHeight(height uint64, withTransactions bool, opts ...interface{}) (*Block, error)
-	GetBlocksByVersion(version uint64, withTransactions bool, opts ...interface{}) (*Block, error)
+	GetBlocksByHeight(ctx context.Context, height uint64, withTransactions bool, opts ...interface{}) (*Block, error)
+	GetBlocksByVersion(ctx context.Context, version uint64, withTransactions bool, opts ...interface{}) (*Block, error)
 }
 
 type BlocksImpl struct {
@@ -23,9 +24,9 @@ type Block struct {
 	Transactions   []TransactionResp `json:"transactions"`
 }
 
-func (impl BlocksImpl) GetBlocksByHeight(height uint64, withTransactions bool, opts ...interface{}) (*Block, error) {
+func (impl BlocksImpl) GetBlocksByHeight(ctx context.Context, height uint64, withTransactions bool, opts ...interface{}) (*Block, error) {
 	var rspJSON Block
-	err := request(http.MethodGet,
+	err := request(ctx, http.MethodGet,
 		impl.Base.Endpoint()+fmt.Sprintf("/v1/blocks/by_height/%d", height),
 		nil, &rspJSON, map[string]interface{}{
 			"with_transactions": withTransactions,
@@ -37,9 +38,9 @@ func (impl BlocksImpl) GetBlocksByHeight(height uint64, withTransactions bool, o
 	return &rspJSON, nil
 }
 
-func (impl BlocksImpl) GetBlocksByVersion(version uint64, withTransactions bool, opts ...interface{}) (*Block, error) {
+func (impl BlocksImpl) GetBlocksByVersion(ctx context.Context, version uint64, withTransactions bool, opts ...interface{}) (*Block, error) {
 	var rspJSON Block
-	err := request(http.MethodGet,
+	err := request(ctx, http.MethodGet,
 		impl.Base.Endpoint()+fmt.Sprintf("/v1/blocks/by_version/%d", version),
 		nil, &rspJSON, map[string]interface{}{
 			"with_transactions": withTransactions,

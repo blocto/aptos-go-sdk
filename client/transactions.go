@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -9,14 +10,14 @@ import (
 )
 
 type Transactions interface {
-	GetTransactions(start, limit int, opts ...interface{}) ([]TransactionResp, error)
-	SubmitTransaction(tx models.UserTransaction, opts ...interface{}) (*TransactionResp, error)
-	SimulateTransaction(tx models.UserTransaction, estimateGasUnitPrice, estimateMaxGasAmount bool, opts ...interface{}) ([]TransactionResp, error)
-	GetAccountTransactions(address string, start, limit int, opts ...interface{}) ([]TransactionResp, error)
-	GetTransactionByHash(txHash string, opts ...interface{}) (*TransactionResp, error)
-	GetTransactionByVersion(version uint64, opts ...interface{}) (*TransactionResp, error)
-	EstimateGasPrice(opts ...interface{}) (uint64, error)
-	WaitForTransaction(txHash string) error
+	GetTransactions(ctx context.Context, start, limit int, opts ...interface{}) ([]TransactionResp, error)
+	SubmitTransaction(ctx context.Context, tx models.UserTransaction, opts ...interface{}) (*TransactionResp, error)
+	SimulateTransaction(ctx context.Context, tx models.UserTransaction, estimateGasUnitPrice, estimateMaxGasAmount bool, opts ...interface{}) ([]TransactionResp, error)
+	GetAccountTransactions(ctx context.Context, address string, start, limit int, opts ...interface{}) ([]TransactionResp, error)
+	GetTransactionByHash(ctx context.Context, txHash string, opts ...interface{}) (*TransactionResp, error)
+	GetTransactionByVersion(ctx context.Context, version uint64, opts ...interface{}) (*TransactionResp, error)
+	EstimateGasPrice(ctx context.Context, opts ...interface{}) (uint64, error)
+	WaitForTransaction(ctx context.Context, txHash string) error
 }
 
 type TransactionsImpl struct {
@@ -56,9 +57,9 @@ type TransactionResp struct {
 	Changes             []models.Change `json:"changes"`
 }
 
-func (impl TransactionsImpl) GetTransactions(start, limit int, opts ...interface{}) ([]TransactionResp, error) {
+func (impl TransactionsImpl) GetTransactions(ctx context.Context, start, limit int, opts ...interface{}) ([]TransactionResp, error) {
 	var rspJSON []TransactionResp
-	err := request(http.MethodGet,
+	err := request(ctx, http.MethodGet,
 		impl.Base.Endpoint()+"/v1/transactions",
 		nil, &rspJSON, map[string]interface{}{
 			"start": start,
@@ -71,9 +72,9 @@ func (impl TransactionsImpl) GetTransactions(start, limit int, opts ...interface
 	return rspJSON, nil
 }
 
-func (impl TransactionsImpl) SubmitTransaction(tx models.UserTransaction, opts ...interface{}) (*TransactionResp, error) {
+func (impl TransactionsImpl) SubmitTransaction(ctx context.Context, tx models.UserTransaction, opts ...interface{}) (*TransactionResp, error) {
 	var rspJSON TransactionResp
-	err := request(http.MethodPost,
+	err := request(ctx, http.MethodPost,
 		impl.Base.Endpoint()+"/v1/transactions",
 		tx, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
@@ -83,10 +84,10 @@ func (impl TransactionsImpl) SubmitTransaction(tx models.UserTransaction, opts .
 	return &rspJSON, nil
 }
 
-func (impl TransactionsImpl) SimulateTransaction(tx models.UserTransaction,
+func (impl TransactionsImpl) SimulateTransaction(ctx context.Context, tx models.UserTransaction,
 	estimateGasUnitPrice, estimateMaxGasAmount bool, opts ...interface{}) ([]TransactionResp, error) {
 	var rspJSON []TransactionResp
-	err := request(http.MethodPost,
+	err := request(ctx, http.MethodPost,
 		impl.Base.Endpoint()+"/v1/transactions/simulate",
 		tx.ForSimulate(), &rspJSON, map[string]interface{}{
 			"estimate_gas_unit_price": estimateGasUnitPrice,
@@ -99,9 +100,9 @@ func (impl TransactionsImpl) SimulateTransaction(tx models.UserTransaction,
 	return rspJSON, nil
 }
 
-func (impl TransactionsImpl) GetAccountTransactions(address string, start, limit int, opts ...interface{}) ([]TransactionResp, error) {
+func (impl TransactionsImpl) GetAccountTransactions(ctx context.Context, address string, start, limit int, opts ...interface{}) ([]TransactionResp, error) {
 	var rspJSON []TransactionResp
-	err := request(http.MethodGet,
+	err := request(ctx, http.MethodGet,
 		impl.Base.Endpoint()+fmt.Sprintf("/v1/accounts/%s/transactions", address),
 		nil, &rspJSON, map[string]interface{}{
 			"start": start,
@@ -114,9 +115,9 @@ func (impl TransactionsImpl) GetAccountTransactions(address string, start, limit
 	return rspJSON, nil
 }
 
-func (impl TransactionsImpl) GetTransactionByHash(txHash string, opts ...interface{}) (*TransactionResp, error) {
+func (impl TransactionsImpl) GetTransactionByHash(ctx context.Context, txHash string, opts ...interface{}) (*TransactionResp, error) {
 	var rspJSON TransactionResp
-	err := request(http.MethodGet,
+	err := request(ctx, http.MethodGet,
 		impl.Base.Endpoint()+fmt.Sprintf("/v1/transactions/by_hash/%s", txHash),
 		nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
@@ -126,9 +127,9 @@ func (impl TransactionsImpl) GetTransactionByHash(txHash string, opts ...interfa
 	return &rspJSON, nil
 }
 
-func (impl TransactionsImpl) GetTransactionByVersion(version uint64, opts ...interface{}) (*TransactionResp, error) {
+func (impl TransactionsImpl) GetTransactionByVersion(ctx context.Context, version uint64, opts ...interface{}) (*TransactionResp, error) {
 	var rspJSON TransactionResp
-	err := request(http.MethodGet,
+	err := request(ctx, http.MethodGet,
 		impl.Base.Endpoint()+fmt.Sprintf("/v1/transactions/by_version/%d", version),
 		nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
@@ -138,12 +139,12 @@ func (impl TransactionsImpl) GetTransactionByVersion(version uint64, opts ...int
 	return &rspJSON, nil
 }
 
-func (impl TransactionsImpl) EstimateGasPrice(opts ...interface{}) (uint64, error) {
+func (impl TransactionsImpl) EstimateGasPrice(ctx context.Context, opts ...interface{}) (uint64, error) {
 	type response struct {
 		GasEstimate uint64 `json:"gas_estimate"`
 	}
 	var rspJSON response
-	err := request(http.MethodGet,
+	err := request(ctx, http.MethodGet,
 		impl.Base.Endpoint()+"/v1/estimate_gas_price",
 		nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
@@ -158,11 +159,11 @@ const (
 	maxRetryCount = 10
 )
 
-func (impl TransactionsImpl) WaitForTransaction(txHash string) error {
+func (impl TransactionsImpl) WaitForTransaction(ctx context.Context, txHash string) error {
 	var isPending bool = true
 	var count int
 	for isPending && count < maxRetryCount {
-		tx, err := impl.GetTransactionByHash(txHash)
+		tx, err := impl.GetTransactionByHash(ctx, txHash)
 		isPending = (err != nil || tx.Type == "pending_transaction")
 		if isPending {
 			time.Sleep(1 * time.Second)

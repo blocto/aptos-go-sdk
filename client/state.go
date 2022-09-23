@@ -1,12 +1,13 @@
 package client
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 )
 
 type State interface {
-	GetTableItemByHandleAndKey(handle string, req TableItemReq, opts ...interface{}) (*TableItemValue, error)
+	GetTableItemByHandleAndKey(ctx context.Context, handle string, req TableItemReq, opts ...interface{}) (*TableItemValue, error)
 }
 
 type StateImpl struct {
@@ -22,9 +23,9 @@ type TableItemReq struct {
 type TableItemValue struct {
 }
 
-func (impl StateImpl) GetTableItemByHandleAndKey(handle string, req TableItemReq, opts ...interface{}) (*TableItemValue, error) {
+func (impl StateImpl) GetTableItemByHandleAndKey(ctx context.Context, handle string, req TableItemReq, opts ...interface{}) (*TableItemValue, error) {
 	var rspJSON TableItemValue
-	err := request(http.MethodPost,
+	err := request(ctx, http.MethodPost,
 		impl.Base.Endpoint()+fmt.Sprintf("/v1/tables/%s/item", handle),
 		req, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {

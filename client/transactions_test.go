@@ -17,7 +17,7 @@ func TestGetTransactionByHash(t *testing.T) {
 			assert.Equal(t, len(resp), n)
 		}))
 		impl := NewAptosClient(srv.URL)
-		tx, err := impl.GetTransactionByHash(mockTxHash)
+		tx, err := impl.GetTransactionByHash(mockCTX, mockTxHash)
 		assert.NoError(t, err)
 		assert.Equal(t, "0x"+mockTxHash, tx.Hash)
 	})
@@ -40,7 +40,7 @@ func TestWaitForTransaction(t *testing.T) {
 			}
 		}))
 		impl := NewAptosClient(srv.URL)
-		err := impl.WaitForTransaction(mockTxHash)
+		err := impl.WaitForTransaction(mockCTX, mockTxHash)
 		assert.NoError(t, err)
 	})
 }
