@@ -1,8 +1,14 @@
 name: CI
-on: [push, pull_request]
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
 jobs:
   test:
-    run-on: ubuntu-latest
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
@@ -12,10 +18,8 @@ jobs:
         run: |
           go test ./...
           go test -race ./...
-      - name: Check git diff
+      - name: Check go mod
         run: |
-          # auto gen mock
-          make generate
           go mod tidy
           go mod verify
           # ensure no added dependencies
