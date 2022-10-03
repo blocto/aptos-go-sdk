@@ -1,0 +1,22 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  test:
+    run-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version: '1.18'
+      - name: Run tests
+        run: |
+          go test ./...
+          go test -race ./...
+      - name: Check git diff
+        run: |
+          # auto gen mock
+          make generate
+          go mod tidy
+          go mod verify
+          # ensure no added dependencies
+          git diff --exit-code
