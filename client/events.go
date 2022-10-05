@@ -9,7 +9,7 @@ import (
 )
 
 type Events interface {
-	GetEventsByEventKey(ctx context.Context, key string, opts ...interface{}) ([]models.Event, error)
+	GetEventsByCreationNumber(ctx context.Context, address, creationNumber string, opts ...interface{}) ([]models.Event, error)
 	GetEventsByEventHandle(ctx context.Context, address, handleStruct, fieldName string, start, limit int, opts ...interface{}) ([]models.Event, error)
 }
 
@@ -17,10 +17,10 @@ type EventsImpl struct {
 	Base
 }
 
-func (impl EventsImpl) GetEventsByEventKey(ctx context.Context, key string, opts ...interface{}) ([]models.Event, error) {
+func (impl EventsImpl) GetEventsByCreationNumber(ctx context.Context, address, creationNumber string, opts ...interface{}) ([]models.Event, error) {
 	var rspJSON []models.Event
 	err := request(ctx, http.MethodGet,
-		impl.Base.Endpoint()+fmt.Sprintf("/v1/events/%s", key),
+		impl.Base.Endpoint()+fmt.Sprintf("/v1/accounts/%s/events/%s", address, creationNumber),
 		nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
 		return nil, err

@@ -220,6 +220,32 @@ func (_m *MockAptosClient) GetBlocksByVersion(ctx context.Context, version uint6
 	return r0, r1
 }
 
+// GetEventsByCreationNumber provides a mock function with given fields: ctx, address, creationNumber, opts
+func (_m *MockAptosClient) GetEventsByCreationNumber(ctx context.Context, address string, creationNumber string, opts ...interface{}) ([]models.Event, error) {
+	var _ca []interface{}
+	_ca = append(_ca, ctx, address, creationNumber)
+	_ca = append(_ca, opts...)
+	ret := _m.Called(_ca...)
+
+	var r0 []models.Event
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, ...interface{}) []models.Event); ok {
+		r0 = rf(ctx, address, creationNumber, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]models.Event)
+		}
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, ...interface{}) error); ok {
+		r1 = rf(ctx, address, creationNumber, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
 // GetEventsByEventHandle provides a mock function with given fields: ctx, address, handleStruct, fieldName, start, limit, opts
 func (_m *MockAptosClient) GetEventsByEventHandle(ctx context.Context, address string, handleStruct string, fieldName string, start int, limit int, opts ...interface{}) ([]models.Event, error) {
 	var _ca []interface{}
@@ -239,32 +265,6 @@ func (_m *MockAptosClient) GetEventsByEventHandle(ctx context.Context, address s
 	var r1 error
 	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, int, int, ...interface{}) error); ok {
 		r1 = rf(ctx, address, handleStruct, fieldName, start, limit, opts...)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// GetEventsByEventKey provides a mock function with given fields: ctx, key, opts
-func (_m *MockAptosClient) GetEventsByEventKey(ctx context.Context, key string, opts ...interface{}) ([]models.Event, error) {
-	var _ca []interface{}
-	_ca = append(_ca, ctx, key)
-	_ca = append(_ca, opts...)
-	ret := _m.Called(_ca...)
-
-	var r0 []models.Event
-	if rf, ok := ret.Get(0).(func(context.Context, string, ...interface{}) []models.Event); ok {
-		r0 = rf(ctx, key, opts...)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]models.Event)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string, ...interface{}) error); ok {
-		r1 = rf(ctx, key, opts...)
 	} else {
 		r1 = ret.Error(1)
 	}
