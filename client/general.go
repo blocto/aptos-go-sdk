@@ -15,7 +15,7 @@ type GeneralImp struct {
 }
 
 type LedgerInfo struct {
-	ChainID             uint64 `json:"chain_id"`
+	ChainID             uint8  `json:"chain_id"`
 	Epoch               string `json:"epoch"`
 	LedgerVersion       string `json:"ledger_version"`
 	LedgerTimestamp     string `json:"ledger_timestamp"`

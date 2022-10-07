@@ -2,9 +2,54 @@ package models
 
 import (
 	"crypto/ed25519"
+	"fmt"
 
 	"github.com/the729/lcs"
+
+	"github.com/portto/aptos-go-sdk/crypto"
 )
+
+type PrivateKey = ed25519.PrivateKey
+
+type Signer interface {
+	Sign(tx *Transaction) *Transaction
+}
+
+type SingleSigner struct {
+	PrivateKey
+	PublicKey
+	AccountAddress
+}
+
+func NewSingleSigner(priv PrivateKey) SingleSigner {
+	pub := priv.Public().(PublicKey)
+	addr := crypto.SingleSignerAuthKey(pub)
+
+	return SingleSigner{
+		PrivateKey:     priv,
+		PublicKey:      pub,
+		AccountAddress: addr,
+	}
+}
+
+func (s *SingleSigner) Sign(tx *Transaction) *Transaction {
+	if tx.hasError() {
+		return tx
+	}
+
+	msgBytes, err := tx.GetSigningMessage()
+	if err != nil {
+		tx.err = fmt.Errorf("GetSigningMessage error: %v", err)
+		return tx
+	}
+
+	signature := ed25519.Sign(s.PrivateKey, msgBytes)
+
+	return tx.SetAuthenticator(TransactionAuthenticatorEd25519{
+		PublicKey: s.PublicKey,
+		Signature: signature,
+	})
+}
 
 type PublicKey = ed25519.PublicKey
 

@@ -37,7 +37,41 @@ func (impl AccountsImpl) GetAccount(ctx context.Context, address string, opts ..
 
 type AccountResource struct {
 	Type string
-	Data interface{}
+	Data struct {
+		*CollectionsResource
+		*TokenStoreResource
+	}
+}
+
+type Table struct {
+	Handle string `json:"handle"`
+}
+
+type EventHandle struct {
+	Counter string
+	GUID    struct {
+		ID struct {
+			Addr        string `json:"addr"`
+			CreationNum string `json:"creation_num"`
+		} `json:"id"`
+	} `json:"guid"`
+}
+
+type CollectionsResource struct {
+	CollectionData         Table       `json:"collection_data"`
+	TokenData              Table       `json:"token_data"`
+	CreateCollectionEvents EventHandle `json:"create_collection_events"`
+	CreateTokenDataEvents  EventHandle `json:"create_token_data_events"`
+	MintTokenEvents        EventHandle `json:"mint_token_events"`
+}
+
+type TokenStoreResource struct {
+	DirectTransfer            bool        `json:"direct_transfer"`
+	Tokens                    Table       `json:"tokens"`
+	DepositEvents             EventHandle `json:"deposit_events"`
+	WithdrawEvents            EventHandle `json:"withdraw_events"`
+	BurnEvents                EventHandle `json:"burn_events"`
+	MutateTokenPropertyEvents EventHandle `json:"mutate_token_property_events"`
 }
 
 func (impl AccountsImpl) GetAccountResources(ctx context.Context, address string, opts ...interface{}) ([]AccountResource, error) {
