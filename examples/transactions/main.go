@@ -16,7 +16,7 @@ import (
 	"github.com/portto/aptos-go-sdk/models"
 )
 
-const DevnetChainID = 32
+const DevnetChainID = 33
 
 var aptosClient client.AptosClient
 var faucetAdminSeed []byte
