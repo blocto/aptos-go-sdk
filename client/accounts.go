@@ -38,6 +38,7 @@ func (impl AccountsImpl) GetAccount(ctx context.Context, address string, opts ..
 type AccountResource struct {
 	Type string
 	Data struct {
+		*CoinStoreResource
 		*CollectionsResource
 		*TokenStoreResource
 	}
@@ -55,6 +56,15 @@ type EventHandle struct {
 			CreationNum string `json:"creation_num"`
 		} `json:"id"`
 	} `json:"guid"`
+}
+
+type CoinStoreResource struct {
+	Coin struct {
+		Value string `json:"value"`
+	} `json:"coin"`
+	Frozen         bool        `json:"frozen"`
+	DepositEvents  EventHandle `json:"deposit_events"`
+	WithdrawEvents EventHandle `json:"withdraw_events"`
 }
 
 type CollectionsResource struct {
