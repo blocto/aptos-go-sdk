@@ -7,7 +7,7 @@ import (
 )
 
 type State interface {
-	GetTableItemByHandleAndKey(ctx context.Context, handle string, req TableItemReq, opts ...interface{}) (*TableItemValue, error)
+	GetTableItemByHandleAndKey(ctx context.Context, handle string, req TableItemReq, resp interface{}, opts ...interface{}) error
 }
 
 type StateImpl struct {
@@ -15,22 +15,18 @@ type StateImpl struct {
 }
 
 type TableItemReq struct {
-	KeyType   string `json:"key_type"`
-	ValueType string `json:"value_type"`
-	Key       string `json:"key"`
+	KeyType   string      `json:"key_type"`
+	ValueType string      `json:"value_type"`
+	Key       interface{} `json:"key"`
 }
 
-type TableItemValue struct {
-}
-
-func (impl StateImpl) GetTableItemByHandleAndKey(ctx context.Context, handle string, req TableItemReq, opts ...interface{}) (*TableItemValue, error) {
-	var rspJSON TableItemValue
+func (impl StateImpl) GetTableItemByHandleAndKey(ctx context.Context, handle string, req TableItemReq, resp interface{}, opts ...interface{}) error {
 	err := request(ctx, http.MethodPost,
 		impl.Base.Endpoint()+fmt.Sprintf("/v1/tables/%s/item", handle),
-		req, &rspJSON, nil, requestOptions(opts...))
+		req, resp, nil, requestOptions(opts...))
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return &rspJSON, nil
+	return nil
 }

@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/the729/lcs"
+
+	"github.com/portto/aptos-go-sdk/models"
 )
 
 //go:generate mockery --name AptosClient --filename mock_client_test.go --inpackage
@@ -90,8 +92,14 @@ func request(ctx context.Context, method, endpoint string, reqBody, resp interfa
 	var reqBytes []byte
 	var err error
 
-	if reqBody != nil {
+	_, isReqBodyTxn := reqBody.(models.UserTransaction)
+	if isReqBodyTxn {
 		reqBytes, err = lcs.Marshal(reqBody)
+		if err != nil {
+			return err
+		}
+	} else {
+		reqBytes, err = json.Marshal(reqBody)
 		if err != nil {
 			return err
 		}
@@ -102,8 +110,10 @@ func request(ctx context.Context, method, endpoint string, reqBody, resp interfa
 		return err
 	}
 
-	if reqBody != nil {
+	if isReqBodyTxn {
 		req.Header.Add("Content-Type", "application/x.aptos.signed_transaction+bcs")
+	} else {
+		req.Header.Add("Content-Type", "application/json")
 	}
 
 	if req.URL != nil && query != nil {

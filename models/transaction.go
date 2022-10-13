@@ -181,6 +181,10 @@ func (t *Transaction) SetPayload(payload TransactionPayload) *Transaction {
 				payload.ArgumentsBCS[i], t.err = lcs.Marshal(&arg)
 			case bool:
 				payload.ArgumentsBCS[i], t.err = lcs.Marshal(&arg)
+			case []bool:
+				payload.ArgumentsBCS[i], t.err = lcs.Marshal(&arg)
+			case []string:
+				payload.ArgumentsBCS[i], t.err = lcs.Marshal(&arg)
 			}
 			if t.err != nil {
 				t.err = fmt.Errorf("marshal arguments[%d] %v: %v", i, arg, t.err)

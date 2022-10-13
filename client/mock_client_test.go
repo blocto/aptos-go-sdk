@@ -324,30 +324,21 @@ func (_m *MockAptosClient) GetResourceByAccountAddressAndResourceType(ctx contex
 	return r0, r1
 }
 
-// GetTableItemByHandleAndKey provides a mock function with given fields: ctx, handle, req, opts
-func (_m *MockAptosClient) GetTableItemByHandleAndKey(ctx context.Context, handle string, req TableItemReq, opts ...interface{}) (*TableItemValue, error) {
+// GetTableItemByHandleAndKey provides a mock function with given fields: ctx, handle, req, resp, opts
+func (_m *MockAptosClient) GetTableItemByHandleAndKey(ctx context.Context, handle string, req TableItemReq, resp interface{}, opts ...interface{}) error {
 	var _ca []interface{}
-	_ca = append(_ca, ctx, handle, req)
+	_ca = append(_ca, ctx, handle, req, resp)
 	_ca = append(_ca, opts...)
 	ret := _m.Called(_ca...)
 
-	var r0 *TableItemValue
-	if rf, ok := ret.Get(0).(func(context.Context, string, TableItemReq, ...interface{}) *TableItemValue); ok {
-		r0 = rf(ctx, handle, req, opts...)
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, TableItemReq, interface{}, ...interface{}) error); ok {
+		r0 = rf(ctx, handle, req, resp, opts...)
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*TableItemValue)
-		}
+		r0 = ret.Error(0)
 	}
 
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string, TableItemReq, ...interface{}) error); ok {
-		r1 = rf(ctx, handle, req, opts...)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
+	return r0
 }
 
 // GetTransactionByHash provides a mock function with given fields: ctx, txHash, opts
