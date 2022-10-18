@@ -39,7 +39,7 @@ type TokenClientImpl struct {
 	chainID uint8
 }
 
-var DefaultMaxGasAmount uint64 = 1000
+var DefaultMaxGasAmount uint64 = 5000
 
 var TokenModule models.Module
 var TokenTransferModule models.Module

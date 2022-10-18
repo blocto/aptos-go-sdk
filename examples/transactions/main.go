@@ -16,7 +16,7 @@ import (
 	"github.com/portto/aptos-go-sdk/models"
 )
 
-const DevnetChainID = 33
+const DevnetChainID = 34
 
 var aptosClient client.AptosClient
 var faucetAdminSeed []byte
@@ -31,8 +31,8 @@ var ctx = context.Background()
 func init() {
 	aptosClient = client.NewAptosClient("https://fullnode.devnet.aptoslabs.com")
 	// please set up the account address & seed which has enough balance
-	faucetAdminSeed, _ = hex.DecodeString("784bc4d62c5e96b42addcbee3e5ccc0f7641fa82e9a3462d9a34d06e474274fe")
-	faucetAdminAddress = "86e4d830197448f975b748f69bd1b3b6d219a07635269a0b4e7f27966771e850"
+	faucetAdminSeed, _ = hex.DecodeString("3a645d4b735c6ad68d727955dd89e5c1d5546059362f7a96a496a26381ae8221")
+	faucetAdminAddress = "2d0f23232bdcd3862c2f65989063415219c4486fcc68c542b3d86ec18de4c9e6"
 	faucetAdminAddr, _ = models.HexToAccountAddress(faucetAdminAddress)
 	addr0x1, _ = models.HexToAccountAddress("0x1")
 	aptosAccountModule = models.Module{
@@ -212,7 +212,7 @@ func replaceAuthKey() {
 	}
 
 	waitForTxConfirmed()
-	faucet(authKey, 50000)
+	faucet(authKey, 5000000)
 	waitForTxConfirmed()
 
 	accountInfo, err := aptosClient.GetAccount(ctx, address)
@@ -283,7 +283,7 @@ func replaceAuthKey() {
 		).
 		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
 		SetGasUnitPrice(uint64(100)).
-		SetMaxGasAmount(uint64(500)).
+		SetMaxGasAmount(uint64(5000)).
 		SetSequenceNumber(accountInfo.SequenceNumber).Error()
 	if err != nil {
 		panic(err)
@@ -325,7 +325,7 @@ func transferTxMultiED25519() {
 	authKey, seeds := createAccountTx(2)
 	address := hex.EncodeToString(authKey[:])
 	waitForTxConfirmed()
-	faucet(authKey, 50000)
+	faucet(authKey, 5000000)
 	waitForTxConfirmed()
 
 	accountInfo, err := aptosClient.GetAccount(ctx, address)
@@ -341,7 +341,7 @@ func transferTxMultiED25519() {
 		SetPayload(getTransferPayload(addr, 1)).
 		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
 		SetGasUnitPrice(uint64(100)).
-		SetMaxGasAmount(uint64(500)).
+		SetMaxGasAmount(uint64(5000)).
 		SetSequenceNumber(accountInfo.SequenceNumber).Error()
 	if err != nil {
 		panic(err)
@@ -430,8 +430,8 @@ func createAccountTx(keyNum int) (authKey [32]byte, seeds []string) {
 			Arguments: []interface{}{authKey},
 		}).
 		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
-		SetGasUnitPrice(uint64(1000)).
-		SetMaxGasAmount(uint64(1000)).
+		SetGasUnitPrice(uint64(100)).
+		SetMaxGasAmount(uint64(5000)).
 		SetSequenceNumber(accountInfo.SequenceNumber).Error()
 	if err != nil {
 		panic(err)
@@ -488,7 +488,7 @@ func faucet(address models.AccountAddress, amount uint64) {
 		SetPayload(getTransferPayload(address, amount)).
 		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
 		SetGasUnitPrice(uint64(100)).
-		SetMaxGasAmount(uint64(500)).
+		SetMaxGasAmount(uint64(5000)).
 		SetSequenceNumber(accountInfo.SequenceNumber).Error()
 	if err != nil {
 		panic(err)
@@ -545,7 +545,7 @@ func invokeMultiAgent() {
 		).
 		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
 		SetGasUnitPrice(uint64(100)).
-		SetMaxGasAmount(uint64(500)).
+		SetMaxGasAmount(uint64(5000)).
 		SetSequenceNumber(senderInfo.SequenceNumber).
 		SetSecondarySigners([]models.AccountAddress{authKey}).
 		Error()
@@ -608,7 +608,7 @@ func invokeMultiAgent() {
 func invokeMultiAgentRotateKey() {
 	authKey, seeds := createAccountTx(2)
 	waitForTxConfirmed()
-	faucet(authKey, 50000)
+	faucet(authKey, 5000000)
 	waitForTxConfirmed()
 	originSeed1, err := hex.DecodeString(seeds[0])
 	if err != nil {
@@ -699,7 +699,7 @@ func invokeMultiAgentRotateKey() {
 		).
 		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
 		SetGasUnitPrice(uint64(100)).
-		SetMaxGasAmount(uint64(500)).
+		SetMaxGasAmount(uint64(5000)).
 		SetSequenceNumber(uint64(0)).
 		Error()
 	if err != nil {
@@ -758,7 +758,7 @@ func invokeScriptPayload() {
 	priv := ed25519.NewKeyFromSeed(key)
 	address := hex.EncodeToString(authKey[:])
 	waitForTxConfirmed()
-	faucet(authKey, 50000)
+	faucet(authKey, 5000000)
 	waitForTxConfirmed()
 
 	accountInfo, err := aptosClient.GetAccount(ctx, address)
@@ -777,7 +777,7 @@ func invokeScriptPayload() {
 		}).
 		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
 		SetGasUnitPrice(uint64(100)).
-		SetMaxGasAmount(uint64(500)).
+		SetMaxGasAmount(uint64(5000)).
 		SetSequenceNumber(accountInfo.SequenceNumber).Error()
 	if err != nil {
 		panic(err)
@@ -852,7 +852,7 @@ func invokeMultiAgentScriptPayload(scriptName string, typeArgs []models.TypeTag,
 		}).
 		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
 		SetGasUnitPrice(uint64(100)).
-		SetMaxGasAmount(uint64(500)).
+		SetMaxGasAmount(uint64(5000)).
 		SetSequenceNumber(senderInfo.SequenceNumber).
 		SetSecondarySigners([]models.AccountAddress{authKey}).
 		Error()
@@ -959,7 +959,7 @@ func createWeightAccountTx() (authKey [32]byte, seeds []string) {
 		}).
 		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
 		SetGasUnitPrice(uint64(100)).
-		SetMaxGasAmount(uint64(1000)).
+		SetMaxGasAmount(uint64(5000)).
 		SetSequenceNumber(accountInfo.SequenceNumber).Error()
 	if err != nil {
 		panic(err)
@@ -1003,7 +1003,7 @@ func transferTxWeightedMultiED25519() {
 	authKey, seeds := createWeightAccountTx()
 	address := hex.EncodeToString(authKey[:])
 	waitForTxConfirmed()
-	faucet(authKey, 50000)
+	faucet(authKey, 5000000)
 	waitForTxConfirmed()
 
 	accountInfo, err := aptosClient.GetAccount(ctx, address)
@@ -1017,7 +1017,7 @@ func transferTxWeightedMultiED25519() {
 		SetPayload(getTransferPayload(faucetAdminAddr, 1)).
 		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
 		SetGasUnitPrice(uint64(100)).
-		SetMaxGasAmount(uint64(500)).
+		SetMaxGasAmount(uint64(5000)).
 		SetSequenceNumber(accountInfo.SequenceNumber).Error()
 	if err != nil {
 		panic(err)
