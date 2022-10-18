@@ -12,7 +12,7 @@ import (
 	"github.com/portto/aptos-go-sdk/models"
 )
 
-const DevnetChainID = 33
+const DevnetChainID = 34
 
 const CollectionName = "Aptos"
 const TokenName = "Aptos Token"
@@ -47,9 +47,9 @@ func init() {
 		Name:    "AptosCoin",
 	}
 
-	faucetAdminSeed, _ = hex.DecodeString("784bc4d62c5e96b42addcbee3e5ccc0f7641fa82e9a3462d9a34d06e474274fe")
+	faucetAdminSeed, _ = hex.DecodeString("3a645d4b735c6ad68d727955dd89e5c1d5546059362f7a96a496a26381ae8221")
 	faucetAdmin = models.NewSingleSigner(ed25519.NewKeyFromSeed(faucetAdminSeed))
-	faucetAdminAddress = "86e4d830197448f975b748f69bd1b3b6d219a07635269a0b4e7f27966771e850"
+	faucetAdminAddress = "2d0f23232bdcd3862c2f65989063415219c4486fcc68c542b3d86ec18de4c9e6"
 	faucetAdminAddr, _ = models.HexToAccountAddress(faucetAdminAddress)
 }
 
@@ -59,7 +59,7 @@ func main() {
 		panic(err)
 	}
 
-	txHash = faucet(addr, 500000)
+	txHash = faucet(addr, 50000000)
 	if err := aptosClient.WaitForTransaction(ctx, txHash); err != nil {
 		panic(err)
 	}
@@ -219,8 +219,8 @@ func createAccount() (txHash string, addr models.AccountAddress, seed []byte) {
 			Arguments: []interface{}{authKey},
 		}).
 		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
-		SetGasUnitPrice(uint64(1000)).
-		SetMaxGasAmount(uint64(1000)).
+		SetGasUnitPrice(uint64(100)).
+		SetMaxGasAmount(uint64(5000)).
 		SetSequenceNumber(accountInfo.SequenceNumber).Error()
 	if err != nil {
 		panic(err)
@@ -257,7 +257,7 @@ func faucet(address models.AccountAddress, amount uint64) string {
 		SetPayload(getTransferPayload(address, amount)).
 		SetExpirationTimestampSecs(uint64(time.Now().Add(10 * time.Minute).Unix())).
 		SetGasUnitPrice(uint64(100)).
-		SetMaxGasAmount(uint64(500)).
+		SetMaxGasAmount(uint64(5000)).
 		SetSequenceNumber(accountInfo.SequenceNumber).Error()
 	if err != nil {
 		panic(err)
