@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/portto/aptos-go-sdk/models"
 )
 
@@ -16,9 +18,10 @@ type TokenClient interface {
 	OfferToken(ctx context.Context, sender models.SingleSigner, req OfferTokenRequest) (string, error)
 	ClaimToken(ctx context.Context, receiver models.SingleSigner, req ClaimTokenRequest) (string, error)
 
-	GetCollectionData(ctx context.Context, creator models.AccountAddress, collectionName string) (*CollectionData, error)
-	GetTokenData(ctx context.Context, creator models.AccountAddress, collectionName, tokenName string) (*TokenData, error)
-	GetToken(ctx context.Context, owner models.AccountAddress, tokenID TokenID) (*Token, error)
+	GetCollectionData(ctx context.Context, creator models.AccountAddress, collectionName string) (*models.CollectionData, error)
+	GetTokenData(ctx context.Context, creator models.AccountAddress, collectionName, tokenName string) (*models.TokenData, error)
+	GetToken(ctx context.Context, owner models.AccountAddress, tokenID models.TokenID) (*models.Token, error)
+	ListAccountTokens(ctx context.Context, owner models.AccountAddress) ([]models.Token, error)
 }
 
 // NewTokenClient creates TokenClient to do things with aptos token.
@@ -124,18 +127,10 @@ type CreateTokenRequest struct {
 	RoyaltyPayeeAddress      models.AccountAddress
 	RoyaltyPointsDenominator uint64
 	RoyaltyPointsNumerator   uint64
-	MutateConfig             TokenMutabilityConfig
+	MutateConfig             models.TokenMutabilityConfig
 	PropertyKeys             []string
 	PropertyValues           []string
 	PropertyTypes            []string
-}
-
-type TokenMutabilityConfig struct {
-	Maximum     bool
-	URI         bool
-	Description bool
-	Royalty     bool
-	Properties  bool
 }
 
 func (impl *TokenClientImpl) CreateToken(ctx context.Context, creator models.SingleSigner, req CreateTokenRequest) (string, error) {
@@ -353,16 +348,7 @@ func (impl *TokenClientImpl) ClaimToken(ctx context.Context, receiver models.Sin
 	return txResp.Hash, nil
 }
 
-type CollectionData struct {
-	Name         string
-	Description  string
-	URI          string
-	Maximum      string                     // uint64
-	Supply       string                     // uint64
-	MutateConfig CollectionMutabilityConfig `json:"mutability_config"`
-}
-
-func (impl *TokenClientImpl) GetCollectionData(ctx context.Context, creator models.AccountAddress, collectionName string) (*CollectionData, error) {
+func (impl *TokenClientImpl) GetCollectionData(ctx context.Context, creator models.AccountAddress, collectionName string) (*models.CollectionData, error) {
 	resource, err := impl.client.GetResourceByAccountAddressAndResourceType(
 		ctx, creator.PrefixZeroTrimmedHex(), "0x3::token::Collections",
 	)
@@ -382,7 +368,7 @@ func (impl *TokenClientImpl) GetCollectionData(ctx context.Context, creator mode
 		Key:       collectionName,
 	}
 
-	var data CollectionData
+	var data models.CollectionData
 	if err := impl.client.GetTableItemByHandleAndKey(ctx, collectionsHandle, req, &data); err != nil {
 		return nil, fmt.Errorf("client.GetTableItemByHandleAndKey error: %v", err)
 	}
@@ -390,23 +376,7 @@ func (impl *TokenClientImpl) GetCollectionData(ctx context.Context, creator mode
 	return &data, nil
 }
 
-type TokenDataID struct {
-	Creator    string `json:"creator"`
-	Collection string `json:"collection"`
-	Name       string `json:"name"`
-}
-
-type TokenData struct {
-	Collection   string                `json:"collection"`
-	Description  string                `json:"description"`
-	Name         string                `json:"name"`
-	Maximum      string                `json:"maximum"` // uint64
-	Supply       string                `json:"supply"`  // uint64
-	URI          string                `json:"uri"`
-	MutateConfig TokenMutabilityConfig `json:"mutability_config"`
-}
-
-func (impl *TokenClientImpl) GetTokenData(ctx context.Context, creator models.AccountAddress, collectionName, tokenName string) (*TokenData, error) {
+func (impl *TokenClientImpl) GetTokenData(ctx context.Context, creator models.AccountAddress, collectionName, tokenName string) (*models.TokenData, error) {
 	resource, err := impl.client.GetResourceByAccountAddressAndResourceType(
 		ctx, creator.PrefixZeroTrimmedHex(), "0x3::token::Collections",
 	)
@@ -423,14 +393,14 @@ func (impl *TokenClientImpl) GetTokenData(ctx context.Context, creator models.Ac
 	req := TableItemReq{
 		KeyType:   "0x3::token::TokenDataId",
 		ValueType: "0x3::token::TokenData",
-		Key: TokenDataID{
+		Key: models.TokenDataID{
 			Creator:    creator.PrefixZeroTrimmedHex(),
 			Collection: collectionName,
 			Name:       tokenName,
 		},
 	}
 
-	var data TokenData
+	var data models.TokenData
 	if err := impl.client.GetTableItemByHandleAndKey(ctx, tokensHandle, req, &data); err != nil {
 		return nil, fmt.Errorf("client.GetTableItemByHandleAndKey error: %v", err)
 	}
@@ -438,20 +408,11 @@ func (impl *TokenClientImpl) GetTokenData(ctx context.Context, creator models.Ac
 	return &data, nil
 }
 
-type TokenID struct {
-	TokenDataID     `json:"token_data_id"`
-	PropertyVersion string `json:"property_version"`
-}
+const tokenStoreType = "0x3::token::TokenStore"
 
-type Token struct {
-	ID              TokenID                `json:"id"`
-	Amount          string                 `json:"amount"`
-	TokenProperties map[string]interface{} `json:"token_properties"`
-}
-
-func (impl *TokenClientImpl) GetToken(ctx context.Context, owner models.AccountAddress, tokenID TokenID) (*Token, error) {
+func (impl *TokenClientImpl) GetToken(ctx context.Context, owner models.AccountAddress, tokenID models.TokenID) (*models.Token, error) {
 	resource, err := impl.client.GetResourceByAccountAddressAndResourceType(
-		ctx, owner.PrefixZeroTrimmedHex(), "0x3::token::TokenStore",
+		ctx, owner.PrefixZeroTrimmedHex(), tokenStoreType,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("client.GetResourceByAccountAddressAndResourceType error: %v", err)
@@ -473,10 +434,62 @@ func (impl *TokenClientImpl) GetToken(ctx context.Context, owner models.AccountA
 		Key:       tokenID,
 	}
 
-	var token Token
+	var token models.Token
 	if err := impl.client.GetTableItemByHandleAndKey(ctx, tokenStoreHandle, req, &token); err != nil {
 		return nil, fmt.Errorf("client.GetTableItemByHandleAndKey error: %v", err)
 	}
 
 	return &token, nil
+}
+
+const depositEventsField = "deposit_events"
+const ErrTableItemNotFound = "table_item_not_found"
+
+// ListAccountTokens gets all tokens of the owner by fetching all token deposit events.
+// It returns an error if the client fails to get the deposit events or the owner has
+// tokens but the client fails to get one of them.
+func (impl *TokenClientImpl) ListAccountTokens(ctx context.Context, owner models.AccountAddress) ([]models.Token, error) {
+	var tokens []models.Token
+
+	tokenIDs := make(map[models.TokenID]bool)
+
+	var start uint64 = 0
+	var limit uint64 = 100
+
+	for {
+		events, err := impl.client.GetEventsByEventHandle(
+			ctx, owner.PrefixZeroTrimmedHex(),
+			tokenStoreType, depositEventsField, start, limit,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("client.GetEventsByEventHandle error: %v", err)
+		}
+
+		if len(events) == 0 {
+			break
+		}
+
+		for _, event := range events {
+			start = uint64(event.SequenceNumber) + 1
+
+			var data models.TokenDepositEvent
+			if err := mapstructure.Decode(event.Data, &data); err != nil {
+				return nil, fmt.Errorf("mapstructure.Decode error: %v", err)
+			}
+
+			if !tokenIDs[data.ID] {
+				token, err := impl.GetToken(ctx, owner, data.ID)
+				if err != nil {
+					if strings.Contains(err.Error(), ErrTableItemNotFound) {
+						continue
+					}
+					return nil, fmt.Errorf("GetToken error: %v", err)
+				}
+				tokens = append(tokens, *token)
+				tokenIDs[data.ID] = true
+			}
+		}
+	}
+
+	return tokens, nil
 }

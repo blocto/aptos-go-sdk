@@ -72,14 +72,3 @@ type Change struct {
 		Data     map[string]interface{} `json:"data"`
 	} `json:"data"`
 }
-
-type Event struct {
-	Version string `json:"version"`
-	GUID    struct {
-		CreationNumber string `json:"creation_number"`
-		AccountAddress string `json:"account_address"`
-	} `json:"guid"`
-	SequenceNumber string                 `json:"sequence_number"`
-	Type           string                 `json:"type"`
-	Data           map[string]interface{} `json:"data"`
-}

@@ -12,7 +12,7 @@ import (
 	"github.com/portto/aptos-go-sdk/models"
 )
 
-const DevnetChainID = 34
+const DevnetChainID = 2
 
 const CollectionName = "Aptos"
 const TokenName = "Aptos Token"
@@ -33,7 +33,7 @@ var ctx = context.Background()
 func init() {
 	var err error
 
-	aptosClient = client.NewAptosClient("https://fullnode.devnet.aptoslabs.com")
+	aptosClient = client.NewAptosClient("https://fullnode.testnet.aptoslabs.com")
 	tokenClient, err = client.NewTokenClient(aptosClient)
 	if err != nil {
 		panic(err)
@@ -59,7 +59,7 @@ func main() {
 		panic(err)
 	}
 
-	txHash = faucet(addr, 50000000)
+	txHash = faucet(addr, 5000000)
 	if err := aptosClient.WaitForTransaction(ctx, txHash); err != nil {
 		panic(err)
 	}
@@ -92,7 +92,7 @@ func main() {
 		Description: "Blocto",
 		Supply:      2,
 		URI:         "https://blocto.app",
-		MutateConfig: client.TokenMutabilityConfig{
+		MutateConfig: models.TokenMutabilityConfig{
 			Description: true,
 		},
 	})
@@ -165,8 +165,8 @@ func main() {
 
 	fmt.Printf("token data: %+v\n", tokenData)
 
-	token, err := tokenClient.GetToken(ctx, creator.AccountAddress, client.TokenID{
-		TokenDataID: client.TokenDataID{
+	token, err := tokenClient.GetToken(ctx, creator.AccountAddress, models.TokenID{
+		TokenDataID: models.TokenDataID{
 			Creator:    creator.PrefixZeroTrimmedHex(),
 			Collection: CollectionName,
 			Name:       TokenName,
@@ -178,8 +178,8 @@ func main() {
 
 	fmt.Printf("token: %+v\n", token)
 
-	token, err = tokenClient.GetToken(ctx, faucetAdminAddr, client.TokenID{
-		TokenDataID: client.TokenDataID{
+	token, err = tokenClient.GetToken(ctx, faucetAdminAddr, models.TokenID{
+		TokenDataID: models.TokenDataID{
 			Creator:    creator.PrefixZeroTrimmedHex(),
 			Collection: CollectionName,
 			Name:       TokenName,
@@ -190,6 +190,12 @@ func main() {
 	}
 
 	fmt.Printf("token: %+v\n", token)
+
+	tokens, err := tokenClient.ListAccountTokens(ctx, creator.AccountAddress)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("%+v\n", tokens)
 }
 
 func createAccount() (txHash string, addr models.AccountAddress, seed []byte) {
