@@ -136,6 +136,11 @@ func request(ctx context.Context, method, endpoint string, reqBody, resp interfa
 	}
 
 	if rsp.StatusCode != http.StatusOK && rsp.StatusCode != http.StatusAccepted {
+		var err Error
+		if json.Unmarshal(rspBody, &err) == nil {
+			err.StatusCode = rsp.StatusCode
+			return err
+		}
 		return fmt.Errorf("response(%d): %s", rsp.StatusCode, string(rspBody))
 	}
 

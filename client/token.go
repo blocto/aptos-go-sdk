@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/mitchellh/mapstructure"
+
 	"github.com/portto/aptos-go-sdk/models"
 )
 
@@ -28,7 +28,7 @@ type TokenClient interface {
 func NewTokenClient(client AptosClient) (TokenClient, error) {
 	ledgerInfo, err := client.LedgerInformation(context.Background())
 	if err != nil {
-		return nil, fmt.Errorf("get ledger info error: %v", err)
+		return nil, fmt.Errorf("get ledger info error: %w", err)
 	}
 
 	return &TokenClientImpl{
@@ -74,12 +74,12 @@ func (impl *TokenClientImpl) CreateCollection(ctx context.Context, creator model
 
 	accountInfo, err := impl.client.GetAccount(ctx, addr)
 	if err != nil {
-		return "", fmt.Errorf("get account info error: %v", err)
+		return "", fmt.Errorf("get account info error: %w", err)
 	}
 
 	gasPrice, err := impl.client.EstimateGasPrice(ctx)
 	if err != nil {
-		return "", fmt.Errorf("get estimate gas price error: %v", err)
+		return "", fmt.Errorf("get estimate gas price error: %w", err)
 	}
 
 	err = tx.SetChainID(impl.chainID).
@@ -105,7 +105,7 @@ func (impl *TokenClientImpl) CreateCollection(ctx context.Context, creator model
 
 	txResp, err := impl.client.SubmitTransaction(ctx, tx.UserTransaction)
 	if err != nil {
-		return "", fmt.Errorf("submit tx error: %v", err)
+		return "", fmt.Errorf("submit tx error: %w", err)
 	}
 
 	return txResp.Hash, nil
@@ -134,12 +134,12 @@ func (impl *TokenClientImpl) CreateToken(ctx context.Context, creator models.Sin
 
 	accountInfo, err := impl.client.GetAccount(ctx, addr)
 	if err != nil {
-		return "", fmt.Errorf("get account info error: %v", err)
+		return "", fmt.Errorf("get account info error: %w", err)
 	}
 
 	gasPrice, err := impl.client.EstimateGasPrice(ctx)
 	if err != nil {
-		return "", fmt.Errorf("get estimate gas price error: %v", err)
+		return "", fmt.Errorf("get estimate gas price error: %w", err)
 	}
 
 	err = tx.SetChainID(impl.chainID).
@@ -170,7 +170,7 @@ func (impl *TokenClientImpl) CreateToken(ctx context.Context, creator models.Sin
 
 	txResp, err := impl.client.SubmitTransaction(ctx, tx.UserTransaction)
 	if err != nil {
-		return "", fmt.Errorf("submit tx error: %v", err)
+		return "", fmt.Errorf("submit tx error: %w", err)
 	}
 
 	return txResp.Hash, nil
@@ -190,12 +190,12 @@ func (impl *TokenClientImpl) MintToken(ctx context.Context, minter models.Single
 
 	accountInfo, err := impl.client.GetAccount(ctx, addr)
 	if err != nil {
-		return "", fmt.Errorf("get account info error: %v", err)
+		return "", fmt.Errorf("get account info error: %w", err)
 	}
 
 	gasPrice, err := impl.client.EstimateGasPrice(ctx)
 	if err != nil {
-		return "", fmt.Errorf("get estimate gas price error: %v", err)
+		return "", fmt.Errorf("get estimate gas price error: %w", err)
 	}
 
 	err = tx.SetChainID(impl.chainID).
@@ -220,7 +220,7 @@ func (impl *TokenClientImpl) MintToken(ctx context.Context, minter models.Single
 
 	txResp, err := impl.client.SubmitTransaction(ctx, tx.UserTransaction)
 	if err != nil {
-		return "", fmt.Errorf("submit tx error: %v", err)
+		return "", fmt.Errorf("submit tx error: %w", err)
 	}
 
 	return txResp.Hash, nil
@@ -242,12 +242,12 @@ func (impl *TokenClientImpl) OfferToken(ctx context.Context, sender models.Singl
 
 	accountInfo, err := impl.client.GetAccount(ctx, addr)
 	if err != nil {
-		return "", fmt.Errorf("get account info error: %v", err)
+		return "", fmt.Errorf("get account info error: %w", err)
 	}
 
 	gasPrice, err := impl.client.EstimateGasPrice(ctx)
 	if err != nil {
-		return "", fmt.Errorf("get estimate gas price error: %v", err)
+		return "", fmt.Errorf("get estimate gas price error: %w", err)
 	}
 
 	err = tx.SetChainID(impl.chainID).
@@ -279,7 +279,7 @@ func (impl *TokenClientImpl) OfferToken(ctx context.Context, sender models.Singl
 
 	txResp, err := impl.client.SubmitTransaction(ctx, tx.UserTransaction)
 	if err != nil {
-		return "", fmt.Errorf("submit tx error: %v", err)
+		return "", fmt.Errorf("submit tx error: %w", err)
 	}
 
 	return txResp.Hash, nil
@@ -300,12 +300,12 @@ func (impl *TokenClientImpl) ClaimToken(ctx context.Context, receiver models.Sin
 
 	accountInfo, err := impl.client.GetAccount(ctx, addr)
 	if err != nil {
-		return "", fmt.Errorf("get account info error: %v", err)
+		return "", fmt.Errorf("get account info error: %w", err)
 	}
 
 	gasPrice, err := impl.client.EstimateGasPrice(ctx)
 	if err != nil {
-		return "", fmt.Errorf("get estimate gas price error: %v", err)
+		return "", fmt.Errorf("get estimate gas price error: %w", err)
 	}
 
 	err = tx.SetChainID(impl.chainID).
@@ -347,7 +347,7 @@ func (impl *TokenClientImpl) GetCollectionData(ctx context.Context, creator mode
 		ctx, creator.PrefixZeroTrimmedHex(), "0x3::token::Collections",
 	)
 	if err != nil {
-		return nil, fmt.Errorf("client.GetResourceByAccountAddressAndResourceType error: %v", err)
+		return nil, fmt.Errorf("client.GetResourceByAccountAddressAndResourceType error: %w", err)
 	}
 
 	if resource.Data.CollectionsResource == nil {
@@ -364,7 +364,7 @@ func (impl *TokenClientImpl) GetCollectionData(ctx context.Context, creator mode
 
 	var data models.CollectionData
 	if err := impl.client.GetTableItemByHandleAndKey(ctx, collectionsHandle, req, &data); err != nil {
-		return nil, fmt.Errorf("client.GetTableItemByHandleAndKey error: %v", err)
+		return nil, fmt.Errorf("client.GetTableItemByHandleAndKey error: %w", err)
 	}
 
 	return &data, nil
@@ -375,7 +375,7 @@ func (impl *TokenClientImpl) GetTokenData(ctx context.Context, creator models.Ac
 		ctx, creator.PrefixZeroTrimmedHex(), "0x3::token::Collections",
 	)
 	if err != nil {
-		return nil, fmt.Errorf("client.GetResourceByAccountAddressAndResourceType error: %v", err)
+		return nil, fmt.Errorf("client.GetResourceByAccountAddressAndResourceType error: %w", err)
 	}
 
 	if resource.Data.CollectionsResource == nil {
@@ -396,7 +396,7 @@ func (impl *TokenClientImpl) GetTokenData(ctx context.Context, creator models.Ac
 
 	var data models.TokenData
 	if err := impl.client.GetTableItemByHandleAndKey(ctx, tokensHandle, req, &data); err != nil {
-		return nil, fmt.Errorf("client.GetTableItemByHandleAndKey error: %v", err)
+		return nil, fmt.Errorf("client.GetTableItemByHandleAndKey error: %w", err)
 	}
 
 	return &data, nil
@@ -409,7 +409,7 @@ func (impl *TokenClientImpl) GetToken(ctx context.Context, owner models.AccountA
 		ctx, owner.PrefixZeroTrimmedHex(), tokenStoreType,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("client.GetResourceByAccountAddressAndResourceType error: %v", err)
+		return nil, fmt.Errorf("client.GetResourceByAccountAddressAndResourceType error: %w", err)
 	}
 
 	if resource.Data.TokenStoreResource == nil {
@@ -430,14 +430,13 @@ func (impl *TokenClientImpl) GetToken(ctx context.Context, owner models.AccountA
 
 	var token models.Token
 	if err := impl.client.GetTableItemByHandleAndKey(ctx, tokenStoreHandle, req, &token); err != nil {
-		return nil, fmt.Errorf("client.GetTableItemByHandleAndKey error: %v", err)
+		return nil, fmt.Errorf("client.GetTableItemByHandleAndKey error: %w", err)
 	}
 
 	return &token, nil
 }
 
 const depositEventsField = "deposit_events"
-const ErrTableItemNotFound = "table_item_not_found"
 
 // ListAccountTokens gets all tokens of the owner by fetching all token deposit events.
 // It returns an error if the client fails to get the deposit events or the owner has
@@ -456,7 +455,7 @@ func (impl *TokenClientImpl) ListAccountTokens(ctx context.Context, owner models
 			tokenStoreType, depositEventsField, start, limit,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("client.GetEventsByEventHandle error: %v", err)
+			return nil, fmt.Errorf("client.GetEventsByEventHandle error: %w", err)
 		}
 
 		if len(events) == 0 {
@@ -474,8 +473,10 @@ func (impl *TokenClientImpl) ListAccountTokens(ctx context.Context, owner models
 			if !tokenIDs[data.ID] {
 				token, err := impl.GetToken(ctx, owner, data.ID)
 				if err != nil {
-					if strings.Contains(err.Error(), ErrTableItemNotFound) {
-						continue
+					if err, ok := errors.Unwrap(err).(Error); ok {
+						if err.IsTableItemNotFound() {
+							continue
+						}
 					}
 					return nil, fmt.Errorf("GetToken error: %v", err)
 				}
