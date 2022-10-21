@@ -1,26 +1,26 @@
 package models
 
 type CollectionMutabilityConfig struct {
-	Description bool
-	URI         bool
-	Maximum     bool
+	Description bool `json:"description"`
+	URI         bool `json:"uri"`
+	Maximum     bool `jons:"maximum"`
 }
 
 type CollectionData struct {
-	Name         string
-	Description  string
-	URI          string
-	Maximum      Uint64
-	Supply       Uint64
+	Name         string                     `json:"name"`
+	Description  string                     `json:"description"`
+	URI          string                     `json:"uri"`
+	Maximum      Uint64                     `json:"maximum"`
+	Supply       Uint64                     `json:"supply"`
 	MutateConfig CollectionMutabilityConfig `json:"mutability_config"`
 }
 
 type TokenMutabilityConfig struct {
-	Maximum     bool
-	URI         bool
-	Description bool
-	Royalty     bool
-	Properties  bool
+	Maximum     bool `json:"maximum"`
+	URI         bool `json:"uri"`
+	Description bool `json:"description"`
+	Royalty     bool `json:"royalty"`
+	Properties  bool `json:"properties"`
 }
 
 type TokenData struct {

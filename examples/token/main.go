@@ -73,7 +73,7 @@ func main() {
 		Description: "Blocto",
 		URI:         "https://blocto.app",
 		Maximum:     25600,
-		MutateConfig: client.CollectionMutabilityConfig{
+		MutateConfig: models.CollectionMutabilityConfig{
 			Description: true,
 		},
 	})

@@ -64,13 +64,7 @@ type CreateCollectionRequest struct {
 	Description  string
 	URI          string
 	Maximum      uint64
-	MutateConfig CollectionMutabilityConfig
-}
-
-type CollectionMutabilityConfig struct {
-	Description bool
-	URI         bool
-	Maximum     bool
+	MutateConfig models.CollectionMutabilityConfig
 }
 
 func (impl *TokenClientImpl) CreateCollection(ctx context.Context, creator models.SingleSigner, req CreateCollectionRequest) (string, error) {
