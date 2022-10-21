@@ -247,14 +247,14 @@ func (_m *MockAptosClient) GetEventsByCreationNumber(ctx context.Context, addres
 }
 
 // GetEventsByEventHandle provides a mock function with given fields: ctx, address, handleStruct, fieldName, start, limit, opts
-func (_m *MockAptosClient) GetEventsByEventHandle(ctx context.Context, address string, handleStruct string, fieldName string, start int, limit int, opts ...interface{}) ([]models.Event, error) {
+func (_m *MockAptosClient) GetEventsByEventHandle(ctx context.Context, address string, handleStruct string, fieldName string, start uint64, limit uint64, opts ...interface{}) ([]models.Event, error) {
 	var _ca []interface{}
 	_ca = append(_ca, ctx, address, handleStruct, fieldName, start, limit)
 	_ca = append(_ca, opts...)
 	ret := _m.Called(_ca...)
 
 	var r0 []models.Event
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, int, int, ...interface{}) []models.Event); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, string, uint64, uint64, ...interface{}) []models.Event); ok {
 		r0 = rf(ctx, address, handleStruct, fieldName, start, limit, opts...)
 	} else {
 		if ret.Get(0) != nil {
@@ -263,7 +263,7 @@ func (_m *MockAptosClient) GetEventsByEventHandle(ctx context.Context, address s
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, int, int, ...interface{}) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, string, uint64, uint64, ...interface{}) error); ok {
 		r1 = rf(ctx, address, handleStruct, fieldName, start, limit, opts...)
 	} else {
 		r1 = ret.Error(1)
