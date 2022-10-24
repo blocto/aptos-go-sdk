@@ -17,7 +17,7 @@ type TypeTagU8 struct{}
 type TypeTagU64 struct{}
 type TypeTagU128 struct{}
 type TypeTagAddress struct{}
-type TypeTagSinger struct{}
+type TypeTagSigner struct{}
 type TypeTagVector struct {
 	TypeTag
 }
@@ -35,7 +35,7 @@ var _ = lcs.RegisterEnum(
 	TypeTagU64{},
 	TypeTagU128{},
 	TypeTagAddress{},
-	TypeTagSinger{},
+	TypeTagSigner{},
 	TypeTagVector{},
 	TypeTagStruct{},
 )
@@ -60,8 +60,8 @@ func (t TypeTagAddress) ToString() string {
 	return "Address"
 }
 
-func (t TypeTagSinger) ToString() string {
-	return "Singer"
+func (t TypeTagSigner) ToString() string {
+	return "Signer"
 }
 
 func (t TypeTagVector) ToString() string {
