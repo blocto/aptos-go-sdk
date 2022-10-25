@@ -40,8 +40,8 @@ type TokenDataID struct {
 }
 
 type TokenID struct {
-	TokenDataID     `json:"token_data_id" mapstructure:"token_data_id"`
-	PropertyVersion string `json:"property_version" mapstructure:"property_version"`
+	TokenDataID     `json:"token_data_id"`
+	PropertyVersion Uint64 `json:"property_version"`
 }
 
 type Token struct {
