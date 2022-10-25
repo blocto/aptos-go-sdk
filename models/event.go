@@ -12,6 +12,6 @@ type Event struct {
 }
 
 type TokenDepositEvent struct {
-	ID     TokenID `mapstructure:"id"`
-	Amount string  `mapstructure:"amount"`
+	ID     TokenID `json:"id"`
+	Amount string  `json:"amount"`
 }

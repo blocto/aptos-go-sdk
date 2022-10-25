@@ -2,11 +2,10 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
-
-	"github.com/mitchellh/mapstructure"
 
 	"github.com/portto/aptos-go-sdk/models"
 )
@@ -416,10 +415,6 @@ func (impl *TokenClientImpl) GetToken(ctx context.Context, owner models.AccountA
 		return nil, errors.New("nil TokenStoreResource")
 	}
 
-	if tokenID.PropertyVersion == "" {
-		tokenID.PropertyVersion = "0"
-	}
-
 	tokenStoreHandle := resource.Data.Tokens.Handle
 
 	req := TableItemReq{
@@ -466,8 +461,12 @@ func (impl *TokenClientImpl) ListAccountTokens(ctx context.Context, owner models
 			start = uint64(event.SequenceNumber) + 1
 
 			var data models.TokenDepositEvent
-			if err := mapstructure.Decode(event.Data, &data); err != nil {
-				return nil, fmt.Errorf("mapstructure.Decode error: %v", err)
+			b, err := json.Marshal(event.Data)
+			if err != nil {
+				return nil, fmt.Errorf("json.Marshal event data %+v error: %w", event.Data, err)
+			}
+			if err := json.Unmarshal(b, &data); err != nil {
+				return nil, fmt.Errorf("json.Unmarshal into TokenDepositEvent error: %w", err)
 			}
 
 			if !tokenIDs[data.ID] {
