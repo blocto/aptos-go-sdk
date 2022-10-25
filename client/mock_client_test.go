@@ -220,16 +220,16 @@ func (_m *MockAptosClient) GetBlocksByVersion(ctx context.Context, version uint6
 	return r0, r1
 }
 
-// GetEventsByCreationNumber provides a mock function with given fields: ctx, address, creationNumber, opts
-func (_m *MockAptosClient) GetEventsByCreationNumber(ctx context.Context, address string, creationNumber string, opts ...interface{}) ([]models.Event, error) {
+// GetEventsByCreationNumber provides a mock function with given fields: ctx, address, creationNumber, query, opts
+func (_m *MockAptosClient) GetEventsByCreationNumber(ctx context.Context, address string, creationNumber string, query map[string]interface{}, opts ...interface{}) ([]models.Event, error) {
 	var _ca []interface{}
-	_ca = append(_ca, ctx, address, creationNumber)
+	_ca = append(_ca, ctx, address, creationNumber, query)
 	_ca = append(_ca, opts...)
 	ret := _m.Called(_ca...)
 
 	var r0 []models.Event
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, ...interface{}) []models.Event); ok {
-		r0 = rf(ctx, address, creationNumber, opts...)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, map[string]interface{}, ...interface{}) []models.Event); ok {
+		r0 = rf(ctx, address, creationNumber, query, opts...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]models.Event)
@@ -237,8 +237,8 @@ func (_m *MockAptosClient) GetEventsByCreationNumber(ctx context.Context, addres
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, ...interface{}) error); ok {
-		r1 = rf(ctx, address, creationNumber, opts...)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, map[string]interface{}, ...interface{}) error); ok {
+		r1 = rf(ctx, address, creationNumber, query, opts...)
 	} else {
 		r1 = ret.Error(1)
 	}
