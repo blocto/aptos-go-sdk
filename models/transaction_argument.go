@@ -32,6 +32,10 @@ type TxArgU8Vector struct {
 	Bytes []byte
 }
 
+func TxArgString(s string) TxArgU8Vector {
+	return TxArgU8Vector{Bytes: []byte(s)}
+}
+
 type TxArgBool struct {
 	Bool bool
 }
