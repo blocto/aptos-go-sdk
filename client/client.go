@@ -91,21 +91,25 @@ func request(ctx context.Context, method, endpoint string, reqBody, resp interfa
 
 	var reqBytes []byte
 	var err error
+	var body io.Reader = http.NoBody
 
 	_, isReqBodyTxn := reqBody.(models.UserTransaction)
-	if isReqBodyTxn {
-		reqBytes, err = lcs.Marshal(reqBody)
-		if err != nil {
-			return err
+	if reqBody != nil {
+		if isReqBodyTxn {
+			reqBytes, err = lcs.Marshal(reqBody)
+			if err != nil {
+				return err
+			}
+		} else {
+			reqBytes, err = json.Marshal(reqBody)
+			if err != nil {
+				return err
+			}
 		}
-	} else {
-		reqBytes, err = json.Marshal(reqBody)
-		if err != nil {
-			return err
-		}
+		body = bytes.NewReader(reqBytes)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, method, endpoint, bytes.NewBuffer(reqBytes))
+	req, err := http.NewRequestWithContext(ctx, method, endpoint, body)
 	if err != nil {
 		return err
 	}
