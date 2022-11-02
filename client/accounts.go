@@ -109,8 +109,42 @@ func (impl AccountsImpl) GetResourceByAccountAddressAndResourceType(ctx context.
 }
 
 type AccountModule struct {
-	Bytecode string      `json:"bytecode"`
-	ABI      interface{} `json:"abi"`
+	Bytecode string `json:"bytecode"`
+	ABI      ABI    `json:"abi"`
+}
+
+type ABI struct {
+	Address          string            `json:"address"`
+	Name             string            `json:"name"`
+	Friends          []string          `json:"friends"`
+	ExposedFunctions []ExposedFunction `json:"exposed_functions"`
+	Structs          []Struct          `json:"structs"`
+}
+
+type ExposedFunction struct {
+	Name              string             `json:"name"`
+	Visibility        string             `json:"visibility"`
+	IsEntry           bool               `json:"is_entry"`
+	GenericTypeParams []GenericTypeParam `json:"generic_type_params"`
+	Params            []string           `json:"params"`
+	Return            []string           `json:"return"`
+}
+
+type GenericTypeParam struct {
+	Constraints []string `json:"constraints"`
+}
+
+type Struct struct {
+	Name              string             `json:"name"`
+	IsNative          bool               `json:"is_native"`
+	Abilities         []string           `json:"abilities"`
+	GenericTypeParams []GenericTypeParam `json:"generic_type_params"`
+	Fields            []Field            `json:"fields"`
+}
+
+type Field struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
 }
 
 func (impl AccountsImpl) GetAccountModules(ctx context.Context, address string, opts ...interface{}) ([]AccountModule, error) {
