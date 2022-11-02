@@ -2,7 +2,11 @@ package client
 
 import "fmt"
 
-const ErrTableItemNotFound = "table_item_not_found"
+const (
+	ErrTableItemNotFound = "table_item_not_found"
+	ErrAccountNotFound   = "account_not_found"
+	ErrModuleNotFound    = "module_not_found"
+)
 
 type Error struct {
 	StatusCode  int    `json:"status_code"`
@@ -17,4 +21,12 @@ func (e Error) Error() string {
 
 func (e Error) IsTableItemNotFound() bool {
 	return e.ErrorCode == ErrTableItemNotFound
+}
+
+func (e Error) IsAccountNotFound() bool {
+	return e.ErrorCode == ErrAccountNotFound
+}
+
+func (e Error) IsModuleNotFound() bool {
+	return e.ErrorCode == ErrModuleNotFound
 }

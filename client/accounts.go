@@ -109,8 +109,42 @@ func (impl AccountsImpl) GetResourceByAccountAddressAndResourceType(ctx context.
 }
 
 type AccountModule struct {
-	Bytecode string      `json:"bytecode"`
-	ABI      interface{} `json:"abi"`
+	Bytecode string `json:"bytecode"`
+	ABI      ABI    `json:"abi"`
+}
+
+type ABI struct {
+	Address          string            `json:"address"`
+	Name             string            `json:"name"`
+	Friends          []string          `json:"friends"`
+	ExposedFunctions []ExposedFunction `json:"exposed_functions"`
+	Structs          []Struct          `json:"structs"`
+}
+
+type ExposedFunction struct {
+	Name              string             `json:"name"`
+	Visibility        string             `json:"visibility"`
+	IsEntry           bool               `json:"is_entry"`
+	GenericTypeParams []GenericTypeParam `json:"generic_type_params"`
+	Params            []string           `json:"params"`
+	Return            []string           `json:"return"`
+}
+
+type GenericTypeParam struct {
+	Constraints []string `json:"constraints"`
+}
+
+type Struct struct {
+	Name              string             `json:"name"`
+	IsNative          bool               `json:"is_native"`
+	Abilities         []string           `json:"abilities"`
+	GenericTypeParams []GenericTypeParam `json:"generic_type_params"`
+	Fields            []Field            `json:"fields"`
+}
+
+type Field struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
 }
 
 func (impl AccountsImpl) GetAccountModules(ctx context.Context, address string, opts ...interface{}) ([]AccountModule, error) {
@@ -119,7 +153,7 @@ func (impl AccountsImpl) GetAccountModules(ctx context.Context, address string, 
 		impl.Base.Endpoint()+fmt.Sprintf("/v1/accounts/%s/modules", address),
 		nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("client.GetAccountModules error: %w", err)
 	}
 
 	return rspJSON, nil
@@ -131,7 +165,7 @@ func (impl AccountsImpl) GetModuleByModuleID(ctx context.Context, address, modul
 		impl.Base.Endpoint()+fmt.Sprintf("/v1/accounts/%s/module/%s", address, moduleID),
 		nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("client.GetModuleByModuleID error: %w", err)
 	}
 
 	return &rspJSON, nil
