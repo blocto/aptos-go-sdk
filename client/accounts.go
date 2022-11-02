@@ -153,7 +153,7 @@ func (impl AccountsImpl) GetAccountModules(ctx context.Context, address string, 
 		impl.Base.Endpoint()+fmt.Sprintf("/v1/accounts/%s/modules", address),
 		nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("client.GetAccountModules error: %w", err)
 	}
 
 	return rspJSON, nil
@@ -165,7 +165,7 @@ func (impl AccountsImpl) GetModuleByModuleID(ctx context.Context, address, modul
 		impl.Base.Endpoint()+fmt.Sprintf("/v1/accounts/%s/module/%s", address, moduleID),
 		nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("client.GetModuleByModuleID error: %w", err)
 	}
 
 	return &rspJSON, nil
