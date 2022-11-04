@@ -37,11 +37,7 @@ func (impl AccountsImpl) GetAccount(ctx context.Context, address string, opts ..
 
 type AccountResource struct {
 	Type string
-	Data struct {
-		*CoinStoreResource
-		*CollectionsResource
-		*TokenStoreResource
-	}
+	Data interface{}
 }
 
 type Table struct {
