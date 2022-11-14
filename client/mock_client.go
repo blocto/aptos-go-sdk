@@ -117,15 +117,15 @@ func (_m *MockAptosClient) GetAccountModules(ctx context.Context, address string
 }
 
 // GetAccountResources provides a mock function with given fields: ctx, address, opts
-func (_m *MockAptosClient) GetAccountResources(ctx context.Context, address string, opts ...interface{}) ([]AccountResource, error) {
+func (_m *MockAptosClient) GetAccountResources(ctx context.Context, address string, version int64, opts ...interface{}) ([]AccountResource, error) {
 	var _ca []interface{}
-	_ca = append(_ca, ctx, address)
+	_ca = append(_ca, ctx, address, version)
 	_ca = append(_ca, opts...)
 	ret := _m.Called(_ca...)
 
 	var r0 []AccountResource
-	if rf, ok := ret.Get(0).(func(context.Context, string, ...interface{}) []AccountResource); ok {
-		r0 = rf(ctx, address, opts...)
+	if rf, ok := ret.Get(0).(func(context.Context, string, int64, ...interface{}) []AccountResource); ok {
+		r0 = rf(ctx, address, version, opts...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]AccountResource)
@@ -133,8 +133,8 @@ func (_m *MockAptosClient) GetAccountResources(ctx context.Context, address stri
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string, ...interface{}) error); ok {
-		r1 = rf(ctx, address, opts...)
+	if rf, ok := ret.Get(1).(func(context.Context, string, int64, ...interface{}) error); ok {
+		r1 = rf(ctx, address, version, opts...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -143,14 +143,14 @@ func (_m *MockAptosClient) GetAccountResources(ctx context.Context, address stri
 }
 
 // GetAccountTransactions provides a mock function with given fields: ctx, address, start, limit, opts
-func (_m *MockAptosClient) GetAccountTransactions(ctx context.Context, address string, start int, limit int, opts ...interface{}) ([]TransactionResp, error) {
+func (_m *MockAptosClient) GetAccountTransactions(ctx context.Context, address string, start uint64, limit int, opts ...interface{}) ([]TransactionResp, error) {
 	var _ca []interface{}
 	_ca = append(_ca, ctx, address, start, limit)
 	_ca = append(_ca, opts...)
 	ret := _m.Called(_ca...)
 
 	var r0 []TransactionResp
-	if rf, ok := ret.Get(0).(func(context.Context, string, int, int, ...interface{}) []TransactionResp); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, uint64, int, ...interface{}) []TransactionResp); ok {
 		r0 = rf(ctx, address, start, limit, opts...)
 	} else {
 		if ret.Get(0) != nil {
@@ -159,7 +159,7 @@ func (_m *MockAptosClient) GetAccountTransactions(ctx context.Context, address s
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string, int, int, ...interface{}) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, uint64, int, ...interface{}) error); ok {
 		r1 = rf(ctx, address, start, limit, opts...)
 	} else {
 		r1 = ret.Error(1)
@@ -299,15 +299,15 @@ func (_m *MockAptosClient) GetModuleByModuleID(ctx context.Context, address stri
 }
 
 // GetResourceByAccountAddressAndResourceType provides a mock function with given fields: ctx, address, resourceType, opts
-func (_m *MockAptosClient) GetResourceByAccountAddressAndResourceType(ctx context.Context, address string, resourceType string, opts ...interface{}) (*AccountResource, error) {
+func (_m *MockAptosClient) GetResourceByAccountAddressAndResourceType(ctx context.Context, address string, resourceType string, version int64, opts ...interface{}) (*AccountResource, error) {
 	var _ca []interface{}
-	_ca = append(_ca, ctx, address, resourceType)
+	_ca = append(_ca, ctx, address, resourceType, version)
 	_ca = append(_ca, opts...)
 	ret := _m.Called(_ca...)
 
 	var r0 *AccountResource
-	if rf, ok := ret.Get(0).(func(context.Context, string, string, ...interface{}) *AccountResource); ok {
-		r0 = rf(ctx, address, resourceType, opts...)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, int64, ...interface{}) *AccountResource); ok {
+		r0 = rf(ctx, address, resourceType, version, opts...)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*AccountResource)
@@ -315,8 +315,8 @@ func (_m *MockAptosClient) GetResourceByAccountAddressAndResourceType(ctx contex
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, string, string, ...interface{}) error); ok {
-		r1 = rf(ctx, address, resourceType, opts...)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, int64, ...interface{}) error); ok {
+		r1 = rf(ctx, address, resourceType, version, opts...)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -411,14 +411,14 @@ func (_m *MockAptosClient) GetTransactionByVersion(ctx context.Context, version 
 }
 
 // GetTransactions provides a mock function with given fields: ctx, start, limit, opts
-func (_m *MockAptosClient) GetTransactions(ctx context.Context, start int, limit int, opts ...interface{}) ([]TransactionResp, error) {
+func (_m *MockAptosClient) GetTransactions(ctx context.Context, start uint64, limit int, opts ...interface{}) ([]TransactionResp, error) {
 	var _ca []interface{}
 	_ca = append(_ca, ctx, start, limit)
 	_ca = append(_ca, opts...)
 	ret := _m.Called(_ca...)
 
 	var r0 []TransactionResp
-	if rf, ok := ret.Get(0).(func(context.Context, int, int, ...interface{}) []TransactionResp); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, uint64, int, ...interface{}) []TransactionResp); ok {
 		r0 = rf(ctx, start, limit, opts...)
 	} else {
 		if ret.Get(0) != nil {
@@ -427,7 +427,7 @@ func (_m *MockAptosClient) GetTransactions(ctx context.Context, start int, limit
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, int, int, ...interface{}) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, uint64, int, ...interface{}) error); ok {
 		r1 = rf(ctx, start, limit, opts...)
 	} else {
 		r1 = ret.Error(1)

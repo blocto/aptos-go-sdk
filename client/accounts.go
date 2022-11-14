@@ -8,8 +8,8 @@ import (
 
 type Accounts interface {
 	GetAccount(ctx context.Context, address string, opts ...interface{}) (*AccountInfo, error)
-	GetAccountResources(ctx context.Context, address string, opts ...interface{}) ([]AccountResource, error)
-	GetResourceByAccountAddressAndResourceType(ctx context.Context, address, resourceType string, opts ...interface{}) (*AccountResource, error)
+	GetAccountResources(ctx context.Context, address string, version int64, opts ...interface{}) ([]AccountResource, error)
+	GetResourceByAccountAddressAndResourceType(ctx context.Context, address, resourceType string, version int64, opts ...interface{}) (*AccountResource, error)
 	GetAccountModules(ctx context.Context, address string, opts ...interface{}) ([]AccountModule, error)
 	GetModuleByModuleID(ctx context.Context, address, moduleID string, opts ...interface{}) (*AccountModule, error)
 
@@ -86,11 +86,16 @@ type TokenStoreResource struct {
 	MutateTokenPropertyEvents EventHandle `json:"mutate_token_property_events"`
 }
 
-func (impl AccountsImpl) GetAccountResources(ctx context.Context, address string, opts ...interface{}) ([]AccountResource, error) {
+func (impl AccountsImpl) GetAccountResources(ctx context.Context, address string, version int64, opts ...interface{}) ([]AccountResource, error) {
 	var rspJSON []AccountResource
+	var url string
+	if version < 0 {
+		url = fmt.Sprintf("/v1/accounts/%s/resources", address)
+	} else {
+		url = fmt.Sprintf("/v1/accounts/%s/resources?ledger_version=%d", address, version)
+	}
 	err := request(ctx, http.MethodGet,
-		impl.Base.Endpoint()+fmt.Sprintf("/v1/accounts/%s/resources", address),
-		nil, &rspJSON, nil, requestOptions(opts...))
+		impl.Base.Endpoint()+url, nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
 		return nil, err
 	}
@@ -98,11 +103,16 @@ func (impl AccountsImpl) GetAccountResources(ctx context.Context, address string
 	return rspJSON, nil
 }
 
-func (impl AccountsImpl) GetResourceByAccountAddressAndResourceType(ctx context.Context, address, resourceType string, opts ...interface{}) (*AccountResource, error) {
+func (impl AccountsImpl) GetResourceByAccountAddressAndResourceType(ctx context.Context, address, resourceType string, version int64, opts ...interface{}) (*AccountResource, error) {
 	var rspJSON AccountResource
+	var url string
+	if version < 0 {
+		url = fmt.Sprintf("/v1/accounts/%s/resource/%s", address, resourceType)
+	} else {
+		url = fmt.Sprintf("/v1/accounts/%s/resource/%s?ledger_version=%d", address, resourceType, version)
+	}
 	err := request(ctx, http.MethodGet,
-		impl.Base.Endpoint()+fmt.Sprintf("/v1/accounts/%s/resource/%s", address, resourceType),
-		nil, &rspJSON, nil, requestOptions(opts...))
+		impl.Base.Endpoint()+url, nil, &rspJSON, nil, requestOptions(opts...))
 	if err != nil {
 		return nil, err
 	}
