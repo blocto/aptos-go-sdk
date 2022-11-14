@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 // Uint64 represents a uint64 value for JSON string format.
@@ -11,7 +12,12 @@ type Uint64 uint64
 
 func (u *Uint64) UnmarshalJSON(b []byte) error {
 	b = bytes.Trim(b, "\"")
-	v, err := strconv.ParseUint(string(b), 10, 64)
+	s := strings.TrimSpace(string(b))
+	if s == "" {
+		*u = 0
+		return nil
+	}
+	v, err := strconv.ParseUint(s, 10, 64)
 	if err != nil {
 		return err
 	}
