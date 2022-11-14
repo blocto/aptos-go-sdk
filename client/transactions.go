@@ -55,7 +55,6 @@ type TransactionResp struct {
 	VmStatus            string          `json:"vm_status"`
 	AccumulatorRootHash string          `json:"accumulator_root_hash"`
 	Changes             []models.Change `json:"changes"`
-	BlockHeight         uint64          `json:"block_height"`
 }
 
 func (impl TransactionsImpl) GetTransactions(ctx context.Context, start, limit int, opts ...interface{}) ([]TransactionResp, error) {
