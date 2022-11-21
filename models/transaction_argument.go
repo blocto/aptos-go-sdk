@@ -21,7 +21,12 @@ type TxArgU64 struct {
 }
 
 type TxArgU128 struct {
-	Higher, Lower uint64
+	// BCS layout for "uint128": 16 bytes.
+	// Binary format in little-endian representation.
+	// For example,
+	// 18446744073709551615 = max uint64 	 = [ff, ff, ff, ff, ff, ff, ff, ff, 00, 00, 00, 00, 00, 00, 00, 00]
+	// 18446744073709551618 = max uint64 + 3 = [02, 00, 00, 00, 00, 00, 00, 00, 01, 00, 00, 00, 00, 00, 00, 00]
+	Lower, Higher uint64
 }
 
 type TxArgAddress struct {
