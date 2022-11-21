@@ -21,7 +21,7 @@ type TxArgU64 struct {
 }
 
 type TxArgU128 struct {
-	// BCS layout for "uint128": Sixteen bytes.
+	// BCS layout for "uint128": 16 bytes.
 	// Binary format in little-endian representation.
 	// For example,
 	// 18446744073709551615 = max uint64 	 = [ff, ff, ff, ff, ff, ff, ff, ff, 00, 00, 00, 00, 00, 00, 00, 00]
