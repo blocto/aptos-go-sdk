@@ -12,6 +12,8 @@ type Accounts interface {
 	GetResourceByAccountAddressAndResourceType(ctx context.Context, address, resourceType string, opts ...interface{}) (*AccountResource, error)
 	GetAccountModules(ctx context.Context, address string, opts ...interface{}) ([]AccountModule, error)
 	GetModuleByModuleID(ctx context.Context, address, moduleID string, opts ...interface{}) (*AccountModule, error)
+
+	GetResourceWithCustomType(ctx context.Context, address, resourceType string, resp interface{}, opts ...interface{}) error
 }
 
 type AccountsImpl struct {
@@ -169,4 +171,15 @@ func (impl AccountsImpl) GetModuleByModuleID(ctx context.Context, address, modul
 	}
 
 	return &rspJSON, nil
+}
+
+func (impl AccountsImpl) GetResourceWithCustomType(ctx context.Context, address, resourceType string, resp interface{}, opts ...interface{}) error {
+	err := request(ctx, http.MethodGet,
+		impl.Base.Endpoint()+fmt.Sprintf("/v1/accounts/%s/resource/%s", address, resourceType),
+		nil, resp, nil, requestOptions(opts...))
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
