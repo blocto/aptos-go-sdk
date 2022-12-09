@@ -15,7 +15,7 @@ import (
 	"github.com/portto/aptos-go-sdk/models"
 )
 
-//go:generate mockery --name AptosClient --filename mock_client_test.go --inpackage
+//go:generate mockery --name AptosClient --filename mock_client.go --inpackage
 
 var client *http.Client
 
