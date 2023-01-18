@@ -15,18 +15,10 @@ type Error struct {
 	VMErrorCode int    `json:"vm_error_code"`
 }
 
-func (e Error) Error() string {
+func (e *Error) Error() string {
 	return fmt.Sprintf("%s: %s", e.ErrorCode, e.Message)
 }
 
-func (e Error) IsTableItemNotFound() bool {
-	return e.ErrorCode == ErrTableItemNotFound
-}
-
-func (e Error) IsAccountNotFound() bool {
-	return e.ErrorCode == ErrAccountNotFound
-}
-
-func (e Error) IsModuleNotFound() bool {
-	return e.ErrorCode == ErrModuleNotFound
+func (e *Error) IsErrorCode(code string) bool {
+	return e.ErrorCode == code
 }
