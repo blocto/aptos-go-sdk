@@ -77,8 +77,8 @@ func TestGetModules(t *testing.T) {
 
 		c := NewAptosClient(srv.URL)
 		_, err := c.GetAccountModules(ctx, mockAddr)
-		err2, ok := errors.Unwrap(err).(Error)
-		assert.Equal(t, true, ok)
-		assert.Equal(t, true, err2.IsAccountNotFound())
+		var e *Error
+		assert.Equal(t, true, errors.As(err, &e))
+		assert.Equal(t, true, e.IsErrorCode(ErrAccountNotFound))
 	})
 }

@@ -472,10 +472,9 @@ func (impl *TokenClientImpl) ListAccountTokens(ctx context.Context, owner models
 			if !tokenIDs[data.ID] {
 				token, err := impl.GetToken(ctx, owner, data.ID)
 				if err != nil {
-					if err, ok := errors.Unwrap(err).(Error); ok {
-						if err.IsTableItemNotFound() {
-							continue
-						}
+					var e *Error
+					if ok := errors.As(err, &e); ok && e.IsErrorCode(ErrTableItemNotFound) {
+						continue
 					}
 					return nil, fmt.Errorf("GetToken error: %v", err)
 				}

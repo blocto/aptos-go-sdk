@@ -143,7 +143,7 @@ func request(ctx context.Context, method, endpoint string, reqBody, resp interfa
 		var err Error
 		if json.Unmarshal(rspBody, &err) == nil {
 			err.StatusCode = rsp.StatusCode
-			return err
+			return &err
 		}
 		return fmt.Errorf("response(%d): %s", rsp.StatusCode, string(rspBody))
 	}
