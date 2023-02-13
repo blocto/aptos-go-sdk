@@ -298,7 +298,7 @@ func replaceAuthKey() {
 	err = tx.SetAuthenticator(models.TransactionAuthenticatorEd25519{
 		PublicKey: priv.Public().(ed25519.PublicKey),
 		Signature: signature,
-	}).Error()
+	}, true).Error()
 	if err != nil {
 		panic(err)
 	}
@@ -365,7 +365,7 @@ func transferTxMultiED25519() {
 		Threshold:  1,
 		Signatures: []models.Signature{signature},
 		Bitmap:     [4]byte{0x40, 0, 0, 0},
-	}).Error()
+	}, true).Error()
 	if err != nil {
 		panic(err)
 	}
@@ -446,7 +446,7 @@ func createAccountTx(keyNum int) (authKey [32]byte, seeds []string) {
 	err = tx.SetAuthenticator(models.TransactionAuthenticatorEd25519{
 		PublicKey: faucetAdminPriv.Public().(ed25519.PublicKey),
 		Signature: signature,
-	}).Error()
+	}, true).Error()
 	if err != nil {
 		panic(err)
 	}
@@ -582,7 +582,7 @@ func invokeMultiAgent() {
 				Bitmap:     [4]byte{0x40, 0, 0, 0},
 			},
 		},
-	}).Error()
+	}, true).Error()
 	if err != nil {
 		panic(err)
 	}
@@ -720,7 +720,7 @@ func invokeMultiAgentRotateKey() {
 		Threshold:  1,
 		Signatures: []models.Signature{signature},
 		Bitmap:     [4]byte{0x40, 0, 0, 0},
-	}).Error()
+	}, true).Error()
 	if err != nil {
 		panic(err)
 	}
@@ -793,7 +793,7 @@ func invokeScriptPayload() {
 	err = tx.SetAuthenticator(models.TransactionAuthenticatorEd25519{
 		PublicKey: priv.Public().(ed25519.PublicKey),
 		Signature: signature,
-	}).Error()
+	}, true).Error()
 	if err != nil {
 		panic(err)
 	}
@@ -895,7 +895,7 @@ func invokeMultiAgentScriptPayload(scriptName string, typeArgs []models.TypeTag,
 				Bitmap:     [4]byte{0x40, 0, 0, 0},
 			},
 		},
-	}).Error()
+	}, true).Error()
 	if err != nil {
 		panic(err)
 	}
@@ -974,7 +974,7 @@ func createWeightAccountTx() (authKey [32]byte, seeds []string) {
 	err = tx.SetAuthenticator(models.TransactionAuthenticatorEd25519{
 		PublicKey: faucetAdminPriv.Public().(ed25519.PublicKey),
 		Signature: signature,
-	}).Error()
+	}, true).Error()
 	if err != nil {
 		panic(err)
 	}
@@ -1045,7 +1045,7 @@ func transferTxWeightedMultiED25519() {
 		Threshold:  2,
 		Signatures: []models.Signature{signature, signature},
 		Bitmap:     [4]byte{0x30, 0, 0, 0},
-	}).Error()
+	}, true).Error()
 	if err != nil {
 		panic(err)
 	}
