@@ -48,7 +48,7 @@ func (s *SingleSigner) Sign(tx *Transaction) *Transaction {
 	return tx.SetAuthenticator(TransactionAuthenticatorEd25519{
 		PublicKey: s.PublicKey,
 		Signature: signature,
-	}, true)
+	})
 }
 
 type PublicKey = ed25519.PublicKey
