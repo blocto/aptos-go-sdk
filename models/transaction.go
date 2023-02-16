@@ -200,7 +200,7 @@ func (t *Transaction) SetPayload(payload TransactionPayload) *Transaction {
 	return t
 }
 
-func (t *Transaction) SetAuthenticator(txAuth TransactionAuthenticator, verify bool) *Transaction {
+func (t *Transaction) SetAuthenticator(txAuth TransactionAuthenticator) *Transaction {
 	if t.hasError() {
 		return t
 	}
@@ -214,26 +214,22 @@ func (t *Transaction) SetAuthenticator(txAuth TransactionAuthenticator, verify b
 
 	switch txAuth := txAuth.(type) {
 	case TransactionAuthenticatorEd25519:
-		if verify && !ed25519.Verify(txAuth.PublicKey, t.signingMessage, txAuth.Signature) {
+		if !ed25519.Verify(txAuth.PublicKey, t.signingMessage, txAuth.Signature) {
 			t.err = errors.New("ed25519.Verify failed")
 			return t
 		}
 		t.Authenticator = txAuth
 	case TransactionAuthenticatorMultiEd25519:
-		if verify {
-			if err := t.validateMultiEd25519(txAuth); err != nil {
-				t.err = err
-				return t
-			}
+		if err := t.validateMultiEd25519(txAuth); err != nil {
+			t.err = err
+			return t
 		}
 
 		t.Authenticator = txAuth.SetBytes()
 	case TransactionAuthenticatorMultiAgent:
-		if verify {
-			if err := t.validateMultiAgent(txAuth); err != nil {
-				t.err = err
-				return t
-			}
+		if err := t.validateMultiAgent(txAuth); err != nil {
+			t.err = err
+			return t
 		}
 
 		switch sender := txAuth.Sender.(type) {
