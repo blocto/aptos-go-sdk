@@ -439,12 +439,15 @@ func (impl *TokenClientImpl) GetToken(ctx context.Context, owner models.AccountA
 func (impl *TokenClientImpl) ListAccountTokens(ctx context.Context, owner models.AccountAddress) ([]models.Token, error) {
 	var tokens []models.Token
 
+	const batchSize = 100
+
 	query := `
-	query CurrentTokens($owner_address: String, $offset: Int) {
+	query CurrentTokens($owner_address: String, $offset: Int, $limit: Int) {
 		current_token_ownerships(
 			where: {owner_address: {_eq: $owner_address}, amount: {_gt: "0"}, table_type: {_eq: "0x3::token::TokenStore"}}
 			order_by: {last_transaction_version: asc}
 			offset: $offset
+			limit: $limit
 			) {
 				creator_address
 				collection_name
@@ -457,9 +460,8 @@ func (impl *TokenClientImpl) ListAccountTokens(ctx context.Context, owner models
 	`
 	variables := map[string]interface{}{
 		"owner_address": graphql.String(owner.PrefixZeroTrimmedHex()),
+		"limit":         batchSize,
 	}
-
-	const batchSize = 1000
 
 	for offset := 0; ; offset += batchSize {
 		variables["offset"] = graphql.Int(offset)
