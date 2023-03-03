@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hasura/go-graphql-client"
+
 	"github.com/portto/aptos-go-sdk/models"
 )
 
@@ -24,7 +26,7 @@ type TokenClient interface {
 }
 
 // NewTokenClient creates TokenClient to do things with aptos token.
-func NewTokenClient(client AptosClient) (TokenClient, error) {
+func NewTokenClient(client AptosClient, graphqlEndpoint string) (TokenClient, error) {
 	ledgerInfo, err := client.LedgerInformation(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("get ledger info error: %w", err)
@@ -32,12 +34,14 @@ func NewTokenClient(client AptosClient) (TokenClient, error) {
 
 	return &TokenClientImpl{
 		client:  client,
+		graphql: graphql.NewClient(graphqlEndpoint, nil),
 		chainID: ledgerInfo.ChainID,
 	}, nil
 }
 
 type TokenClientImpl struct {
 	client  AptosClient
+	graphql *graphql.Client
 	chainID uint8
 }
 
@@ -431,56 +435,71 @@ func (impl *TokenClientImpl) GetToken(ctx context.Context, owner models.AccountA
 	return &token, nil
 }
 
-const depositEventsField = "deposit_events"
-
-// ListAccountTokens gets all tokens of the owner by fetching all token deposit events.
-// It returns an error if the client fails to get the deposit events or the owner has
-// tokens but the client fails to get one of them.
+// ListAccountTokens gets aptos tokens of an account by indexer graphql api. Returns a list of tokens.
 func (impl *TokenClientImpl) ListAccountTokens(ctx context.Context, owner models.AccountAddress) ([]models.Token, error) {
 	var tokens []models.Token
 
-	tokenIDs := make(map[models.TokenID]bool)
+	query := `
+	query CurrentTokens($owner_address: String, $offset: Int) {
+		current_token_ownerships(
+			where: {owner_address: {_eq: $owner_address}, amount: {_gt: "0"}, table_type: {_eq: "0x3::token::TokenStore"}}
+			order_by: {last_transaction_version: asc}
+			offset: $offset
+			) {
+				creator_address
+				collection_name
+				name
+				property_version
+				amount
+				token_properties
+			}
+		}
+	`
+	variables := map[string]interface{}{
+		"owner_address": graphql.String(owner.PrefixZeroTrimmedHex()),
+	}
 
-	var start uint64 = 0
-	var limit uint64 = 100
+	const batchSize = 1000
 
-	for {
-		events, err := impl.client.GetEventsByEventHandle(
-			ctx, owner.PrefixZeroTrimmedHex(),
-			tokenStoreType, depositEventsField, start, limit,
-		)
+	for offset := 0; ; offset += batchSize {
+		variables["offset"] = graphql.Int(offset)
+
+		raw, err := impl.graphql.ExecRaw(ctx, query, variables, nil)
 		if err != nil {
-			return nil, fmt.Errorf("client.GetEventsByEventHandle error: %w", err)
+			return nil, fmt.Errorf("graphql.ExecRaw error: %w", err)
 		}
 
-		if len(events) == 0 {
+		var result struct {
+			CurrentTokenOwnerships []struct {
+				Creator         string             `json:"creator_address"`
+				Collection      string             `json:"collection_name"`
+				Name            string             `json:"name"`
+				PropertyVersion models.Uint64      `json:"property_version"`
+				Amount          models.Uint64      `json:"amount"`
+				TokenProperties models.PropertyMap `json:"token_properties"`
+			} `json:"current_token_ownerships"`
+		}
+		if err := json.Unmarshal(raw, &result); err != nil {
+			return nil, fmt.Errorf("json.Unmarshal error: %w", err)
+		}
+
+		for _, t := range result.CurrentTokenOwnerships {
+			tokens = append(tokens, models.Token{
+				ID: models.TokenID{
+					TokenDataID: models.TokenDataID{
+						Creator:    t.Creator,
+						Collection: t.Collection,
+						Name:       t.Name,
+					},
+					PropertyVersion: t.PropertyVersion,
+				},
+				Amount:          t.Amount,
+				TokenProperties: t.TokenProperties,
+			})
+		}
+
+		if len(result.CurrentTokenOwnerships) < batchSize {
 			break
-		}
-
-		for _, event := range events {
-			start = uint64(event.SequenceNumber) + 1
-
-			var data models.TokenDepositEvent
-			b, err := json.Marshal(event.Data)
-			if err != nil {
-				return nil, fmt.Errorf("json.Marshal event data %+v error: %w", event.Data, err)
-			}
-			if err := json.Unmarshal(b, &data); err != nil {
-				return nil, fmt.Errorf("json.Unmarshal into TokenDepositEvent error: %w", err)
-			}
-
-			if !tokenIDs[data.ID] {
-				token, err := impl.GetToken(ctx, owner, data.ID)
-				if err != nil {
-					var e *Error
-					if ok := errors.As(err, &e); ok && e.IsErrorCode(ErrTableItemNotFound) {
-						continue
-					}
-					return nil, fmt.Errorf("GetToken error: %v", err)
-				}
-				tokens = append(tokens, *token)
-				tokenIDs[data.ID] = true
-			}
 		}
 	}
 
