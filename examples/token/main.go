@@ -34,7 +34,7 @@ func init() {
 	var err error
 
 	aptosClient = client.NewAptosClient("https://fullnode.testnet.aptoslabs.com")
-	tokenClient, err = client.NewTokenClient(aptosClient)
+	tokenClient, err = client.NewTokenClient(aptosClient, "https://indexer-testnet.staging.gcp.aptosdev.com/v1/graphql")
 	if err != nil {
 		panic(err)
 	}
@@ -87,11 +87,12 @@ func main() {
 	}
 
 	hash, err = tokenClient.CreateToken(ctx, creator, client.CreateTokenRequest{
-		Collection:  CollectionName,
-		Name:        TokenName,
-		Description: "Blocto",
-		Supply:      2,
-		URI:         "https://blocto.app",
+		Collection:          CollectionName,
+		Name:                TokenName,
+		Description:         "Blocto",
+		Supply:              2,
+		URI:                 "https://blocto.app",
+		RoyaltyPayeeAddress: creator.AccountAddress,
 		MutateConfig: models.TokenMutabilityConfig{
 			Description: true,
 		},

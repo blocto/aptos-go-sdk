@@ -45,9 +45,10 @@ type TokenID struct {
 }
 
 type Token struct {
-	ID              TokenID     `json:"id"`
-	Amount          Uint64      `json:"amount"`
-	TokenProperties PropertyMap `json:"token_properties"`
+	ID              TokenID           `json:"id"`
+	Amount          Uint64            `json:"amount"`
+	TokenProperties PropertyMap       `json:"token_properties"`
+	JSONProperties  map[string]string `json:"-"`
 }
 
 type PropertyMap struct {
