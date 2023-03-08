@@ -473,12 +473,12 @@ func (impl *TokenClientImpl) ListAccountTokens(ctx context.Context, owner models
 
 		var result struct {
 			CurrentTokenOwnerships []struct {
-				Creator         string             `json:"creator_address"`
-				Collection      string             `json:"collection_name"`
-				Name            string             `json:"name"`
-				PropertyVersion models.Uint64      `json:"property_version"`
-				Amount          models.Uint64      `json:"amount"`
-				TokenProperties models.PropertyMap `json:"token_properties"`
+				Creator         string            `json:"creator_address"`
+				Collection      string            `json:"collection_name"`
+				Name            string            `json:"name"`
+				PropertyVersion models.Uint64     `json:"property_version"`
+				Amount          models.Uint64     `json:"amount"`
+				TokenProperties map[string]string `json:"token_properties"`
 			} `json:"current_token_ownerships"`
 		}
 		if err := json.Unmarshal(raw, &result); err != nil {
@@ -495,8 +495,8 @@ func (impl *TokenClientImpl) ListAccountTokens(ctx context.Context, owner models
 					},
 					PropertyVersion: t.PropertyVersion,
 				},
-				Amount:          t.Amount,
-				TokenProperties: t.TokenProperties,
+				Amount:         t.Amount,
+				JSONProperties: t.TokenProperties,
 			})
 		}
 
