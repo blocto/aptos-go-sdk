@@ -460,7 +460,7 @@ func (impl *TokenClientImpl) ListAccountTokens(ctx context.Context, owner models
 		}
 	`
 	variables := map[string]interface{}{
-		"owner_address": graphql.String(hex.EncodeToString(owner[:])),
+		"owner_address": graphql.String("0x" + hex.EncodeToString(owner[:])),
 		"limit":         batchSize,
 	}
 
