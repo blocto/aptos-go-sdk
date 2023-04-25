@@ -21,6 +21,10 @@ func (addr AccountAddress) PrefixZeroTrimmedHex() string {
 	return "0x" + strings.TrimPrefix(hex, "0")
 }
 
+func (addr AccountAddress) ToHex() string {
+	return "0x" + hex.EncodeToString(addr[:])
+}
+
 func HexToAccountAddress(addr string) (AccountAddress, error) {
 	addr = strings.TrimPrefix(addr, "0x")
 	if len(addr)%2 == 1 {
