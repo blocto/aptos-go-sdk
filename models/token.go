@@ -34,6 +34,7 @@ type TokenData struct {
 }
 
 type TokenDataID struct {
+	Hash       string `json:"hash"`
 	Creator    string `json:"creator"`
 	Collection string `json:"collection"`
 	Name       string `json:"name"`
