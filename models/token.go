@@ -67,3 +67,19 @@ type PropertyValue struct {
 	Type  string `json:"type"`
 	Value string `json:"value"`
 }
+
+type TokenV2 struct {
+	ID                string  `json:"id"`
+	Name              string  `json:"name"`
+	Description       string  `json:"description"`
+	URI               string  `json:"uri"`
+	Standard          string  `json:"standard"`
+	OwnerAddress      string  `json:"owner_address"`
+	Amount            Uint64  `json:"amount"`
+	CollectionName    string  `json:"collection_name"`
+	CreatorAddress    string  `json:"creator_address"`
+	Maximum           *Uint64 `json:"maximum"`
+	Supply            Uint64  `json:"supply"`
+	PropertyVersionV1 Uint64  `json:"property_version_v1"`
+	IsSoulboundV2     bool    `json:"is_soulbound_v2"`
+}

@@ -23,6 +23,8 @@ type TokenClient interface {
 	GetTokenData(ctx context.Context, creator models.AccountAddress, collectionName, tokenName string) (*models.TokenData, error)
 	GetToken(ctx context.Context, owner models.AccountAddress, tokenID models.TokenID) (*models.Token, error)
 	ListAccountTokens(ctx context.Context, owner models.AccountAddress) ([]models.Token, error)
+	// ListAccountTokensV2 uses graphql api to get tokens with version v1 and v2.
+	ListAccountTokensV2(ctx context.Context, owners ...models.AccountAddress) ([]models.TokenV2, error)
 }
 
 // NewTokenClient creates TokenClient to do things with aptos token.
@@ -504,6 +506,112 @@ func (impl *TokenClientImpl) ListAccountTokens(ctx context.Context, owner models
 		}
 
 		if len(result.CurrentTokenOwnerships) < batchSize {
+			break
+		}
+	}
+
+	return tokens, nil
+}
+
+// ListAccountTokens gets aptos tokens of an account by indexer graphql api. Returns a list of tokens of version v1 and v2.
+func (impl *TokenClientImpl) ListAccountTokensV2(ctx context.Context, owners ...models.AccountAddress) ([]models.TokenV2, error) {
+	if len(owners) == 0 {
+		return nil, nil
+	}
+
+	const batchSize = 100
+
+	query := `
+	query CurrentTokens($owner_addresses: [String!], $offset: Int, $limit: Int) {
+		current_token_ownerships_v2(
+			where: {owner_address: {_in: $owner_addresses}, amount: {_gt: "0"}}
+			order_by: {last_transaction_version: asc}
+			offset: $offset
+			limit: $limit
+			) {
+				amount
+				current_token_data {
+					current_collection {
+						creator_address
+						collection_name
+					}
+					token_name
+					token_standard
+					token_data_id
+					token_uri
+					maximum
+					supply
+					description
+				}
+				owner_address
+				property_version_v1
+				is_soulbound_v2
+			}
+		}
+	`
+
+	addresses := make([]graphql.String, 0, len(owners))
+	for i := range owners {
+		addresses = append(addresses, graphql.String(owners[i].ToHex()))
+	}
+	variables := map[string]interface{}{
+		"owner_addresses": addresses,
+		"limit":           batchSize,
+	}
+
+	var tokens []models.TokenV2
+	for offset := 0; ; offset += batchSize {
+		variables["offset"] = graphql.Int(offset)
+
+		raw, err := impl.graphql.ExecRaw(ctx, query, variables, nil)
+		if err != nil {
+			return nil, fmt.Errorf("graphql.ExecRaw error: %w", err)
+		}
+
+		var result struct {
+			CurrentTokenOwnershipsV2 []struct {
+				Amount            models.Uint64 `json:"amount"`
+				OwnerAddress      string        `json:"owner_address"`
+				PropertyVersionV1 models.Uint64 `json:"property_version_v1"`
+				IsSoulboundV2     bool          `json:"is_soulbound_v2"`
+				CurrentTokenData  struct {
+					CurrentCollection struct {
+						CreatorAddress string `json:"creator_address"`
+						CollectionName string `json:"collection_name"`
+					} `json:"current_collection"`
+					TokenName     string         `json:"token_name"`
+					TokenStandard string         `json:"token_standard"`
+					TokenDataID   string         `json:"token_data_id"`
+					TokenURI      string         `json:"token_uri"`
+					Maximum       *models.Uint64 `json:"maximum"`
+					Supply        models.Uint64  `json:"supply"`
+					Description   string         `json:"description"`
+				} `json:"current_token_data"`
+			} `json:"current_token_ownerships_v2"`
+		}
+		if err := json.Unmarshal(raw, &result); err != nil {
+			return nil, fmt.Errorf("json.Unmarshal error: %w", err)
+		}
+
+		for i := range result.CurrentTokenOwnershipsV2 {
+			tokens = append(tokens, models.TokenV2{
+				ID:                result.CurrentTokenOwnershipsV2[i].CurrentTokenData.TokenDataID,
+				Name:              result.CurrentTokenOwnershipsV2[i].CurrentTokenData.TokenName,
+				Description:       result.CurrentTokenOwnershipsV2[i].CurrentTokenData.Description,
+				URI:               result.CurrentTokenOwnershipsV2[i].CurrentTokenData.TokenURI,
+				Standard:          result.CurrentTokenOwnershipsV2[i].CurrentTokenData.TokenStandard,
+				OwnerAddress:      result.CurrentTokenOwnershipsV2[i].OwnerAddress,
+				Amount:            result.CurrentTokenOwnershipsV2[i].Amount,
+				CollectionName:    result.CurrentTokenOwnershipsV2[i].CurrentTokenData.CurrentCollection.CollectionName,
+				CreatorAddress:    result.CurrentTokenOwnershipsV2[i].CurrentTokenData.CurrentCollection.CreatorAddress,
+				Maximum:           result.CurrentTokenOwnershipsV2[i].CurrentTokenData.Maximum,
+				Supply:            result.CurrentTokenOwnershipsV2[i].CurrentTokenData.Supply,
+				PropertyVersionV1: result.CurrentTokenOwnershipsV2[i].PropertyVersionV1,
+				IsSoulboundV2:     result.CurrentTokenOwnershipsV2[i].IsSoulboundV2,
+			})
+		}
+
+		if len(result.CurrentTokenOwnershipsV2) < batchSize {
 			break
 		}
 	}
