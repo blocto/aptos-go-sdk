@@ -534,13 +534,13 @@ func (impl *TokenClientImpl) ListAccountTokensV2(ctx context.Context, owners ...
 					current_collection {
 						creator_address
 						collection_name
+						current_supply
+						max_supply
 					}
 					token_name
 					token_standard
 					token_data_id
 					token_uri
-					maximum
-					supply
 					description
 				}
 				owner_address
@@ -576,16 +576,16 @@ func (impl *TokenClientImpl) ListAccountTokensV2(ctx context.Context, owners ...
 				IsSoulboundV2     bool          `json:"is_soulbound_v2"`
 				CurrentTokenData  struct {
 					CurrentCollection struct {
-						CreatorAddress string `json:"creator_address"`
-						CollectionName string `json:"collection_name"`
+						CreatorAddress string         `json:"creator_address"`
+						CollectionName string         `json:"collection_name"`
+						MaxSupply      *models.Uint64 `json:"max_supply"`
+						CurrentSupply  models.Uint64  `json:"current_supply"`
 					} `json:"current_collection"`
-					TokenName     string         `json:"token_name"`
-					TokenStandard string         `json:"token_standard"`
-					TokenDataID   string         `json:"token_data_id"`
-					TokenURI      string         `json:"token_uri"`
-					Maximum       *models.Uint64 `json:"maximum"`
-					Supply        models.Uint64  `json:"supply"`
-					Description   string         `json:"description"`
+					TokenName     string `json:"token_name"`
+					TokenStandard string `json:"token_standard"`
+					TokenDataID   string `json:"token_data_id"`
+					TokenURI      string `json:"token_uri"`
+					Description   string `json:"description"`
 				} `json:"current_token_data"`
 			} `json:"current_token_ownerships_v2"`
 		}
@@ -604,8 +604,8 @@ func (impl *TokenClientImpl) ListAccountTokensV2(ctx context.Context, owners ...
 				Amount:            result.CurrentTokenOwnershipsV2[i].Amount,
 				CollectionName:    result.CurrentTokenOwnershipsV2[i].CurrentTokenData.CurrentCollection.CollectionName,
 				CreatorAddress:    result.CurrentTokenOwnershipsV2[i].CurrentTokenData.CurrentCollection.CreatorAddress,
-				Maximum:           result.CurrentTokenOwnershipsV2[i].CurrentTokenData.Maximum,
-				Supply:            result.CurrentTokenOwnershipsV2[i].CurrentTokenData.Supply,
+				Maximum:           result.CurrentTokenOwnershipsV2[i].CurrentTokenData.CurrentCollection.MaxSupply,
+				Supply:            result.CurrentTokenOwnershipsV2[i].CurrentTokenData.CurrentCollection.CurrentSupply,
 				PropertyVersionV1: result.CurrentTokenOwnershipsV2[i].PropertyVersionV1,
 				IsSoulboundV2:     result.CurrentTokenOwnershipsV2[i].IsSoulboundV2,
 			})
