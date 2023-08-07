@@ -538,14 +538,14 @@ func (impl *TokenClientImpl) ListAccountTokensV2(ctx context.Context, owners ...
 						max_supply
 					}
 					token_name
-					token_standard
-					token_data_id
 					token_uri
 					description
 				}
 				owner_address
 				property_version_v1
 				is_soulbound_v2
+				token_data_id
+				token_standard
 			}
 		}
 	`
@@ -574,6 +574,8 @@ func (impl *TokenClientImpl) ListAccountTokensV2(ctx context.Context, owners ...
 				OwnerAddress      string        `json:"owner_address"`
 				PropertyVersionV1 models.Uint64 `json:"property_version_v1"`
 				IsSoulboundV2     bool          `json:"is_soulbound_v2"`
+				TokenDataID       string        `json:"token_data_id"`
+				TokenStandard     string        `json:"token_standard"`
 				CurrentTokenData  struct {
 					CurrentCollection struct {
 						CreatorAddress string         `json:"creator_address"`
@@ -581,25 +583,26 @@ func (impl *TokenClientImpl) ListAccountTokensV2(ctx context.Context, owners ...
 						MaxSupply      *models.Uint64 `json:"max_supply"`
 						CurrentSupply  models.Uint64  `json:"current_supply"`
 					} `json:"current_collection"`
-					TokenName     string `json:"token_name"`
-					TokenStandard string `json:"token_standard"`
-					TokenDataID   string `json:"token_data_id"`
-					TokenURI      string `json:"token_uri"`
-					Description   string `json:"description"`
+					TokenName   string `json:"token_name"`
+					TokenURI    string `json:"token_uri"`
+					Description string `json:"description"`
 				} `json:"current_token_data"`
 			} `json:"current_token_ownerships_v2"`
 		}
+
+		fmt.Println("raw", string(raw))
 		if err := json.Unmarshal(raw, &result); err != nil {
 			return nil, fmt.Errorf("json.Unmarshal error: %w", err)
 		}
+		fmt.Printf("result: %+v\n", result)
 
 		for i := range result.CurrentTokenOwnershipsV2 {
 			tokens = append(tokens, models.TokenV2{
-				ID:                result.CurrentTokenOwnershipsV2[i].CurrentTokenData.TokenDataID,
+				ID:                result.CurrentTokenOwnershipsV2[i].TokenDataID,
 				Name:              result.CurrentTokenOwnershipsV2[i].CurrentTokenData.TokenName,
 				Description:       result.CurrentTokenOwnershipsV2[i].CurrentTokenData.Description,
 				URI:               result.CurrentTokenOwnershipsV2[i].CurrentTokenData.TokenURI,
-				Standard:          result.CurrentTokenOwnershipsV2[i].CurrentTokenData.TokenStandard,
+				Standard:          result.CurrentTokenOwnershipsV2[i].TokenStandard,
 				OwnerAddress:      result.CurrentTokenOwnershipsV2[i].OwnerAddress,
 				Amount:            result.CurrentTokenOwnershipsV2[i].Amount,
 				CollectionName:    result.CurrentTokenOwnershipsV2[i].CurrentTokenData.CurrentCollection.CollectionName,
