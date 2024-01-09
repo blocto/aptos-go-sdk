@@ -349,7 +349,7 @@ func (impl *TokenClientImpl) ClaimToken(ctx context.Context, receiver models.Sin
 
 func (impl *TokenClientImpl) GetCollectionData(ctx context.Context, creator models.AccountAddress, collectionName string) (*models.CollectionData, error) {
 	resource, err := impl.client.GetResourceByAccountAddressAndResourceType(
-		ctx, creator.PrefixZeroTrimmedHex(), "0x3::token::Collections",
+		ctx, creator.PrefixZeroTrimmedHex(), "0x3::token::Collections", -1,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("client.GetResourceByAccountAddressAndResourceType error: %w", err)
@@ -377,7 +377,7 @@ func (impl *TokenClientImpl) GetCollectionData(ctx context.Context, creator mode
 
 func (impl *TokenClientImpl) GetTokenData(ctx context.Context, creator models.AccountAddress, collectionName, tokenName string) (*models.TokenData, error) {
 	resource, err := impl.client.GetResourceByAccountAddressAndResourceType(
-		ctx, creator.PrefixZeroTrimmedHex(), "0x3::token::Collections",
+		ctx, creator.PrefixZeroTrimmedHex(), "0x3::token::Collections", -1,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("client.GetResourceByAccountAddressAndResourceType error: %w", err)
@@ -411,7 +411,7 @@ const tokenStoreType = "0x3::token::TokenStore"
 
 func (impl *TokenClientImpl) GetToken(ctx context.Context, owner models.AccountAddress, tokenID models.TokenID) (*models.Token, error) {
 	resource, err := impl.client.GetResourceByAccountAddressAndResourceType(
-		ctx, owner.PrefixZeroTrimmedHex(), tokenStoreType,
+		ctx, owner.PrefixZeroTrimmedHex(), tokenStoreType, -1,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("client.GetResourceByAccountAddressAndResourceType error: %w", err)
