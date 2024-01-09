@@ -6,9 +6,9 @@ type Event struct {
 		CreationNumber Uint64 `json:"creation_number"`
 		AccountAddress string `json:"account_address"`
 	} `json:"guid"`
-	SequenceNumber Uint64                 `json:"sequence_number"`
-	Type           string                 `json:"type"`
-	Data           map[string]interface{} `json:"data"`
+	SequenceNumber Uint64      `json:"sequence_number"`
+	Type           string      `json:"type"`
+	Data           interface{} `json:"data"`
 }
 
 type TokenDepositEvent struct {
